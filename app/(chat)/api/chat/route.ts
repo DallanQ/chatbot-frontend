@@ -1,9 +1,6 @@
 import {
   appendClientMessage,
-  appendResponseMessages,
   createDataStream,
-  smoothStream,
-  streamText,
 } from 'ai';
 import { auth, type UserType } from '@/app/(auth)/auth';
 import { type RequestHints, systemPrompt } from '@/lib/ai/prompts';
@@ -17,14 +14,8 @@ import {
   saveChat,
   saveMessages,
 } from '@/lib/db/queries';
-import { generateUUID, getTrailingMessageId } from '@/lib/utils';
+import { generateUUID } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
-import { createDocument } from '@/lib/ai/tools/create-document';
-import { updateDocument } from '@/lib/ai/tools/update-document';
-import { requestSuggestions } from '@/lib/ai/tools/request-suggestions';
-import { getWeather } from '@/lib/ai/tools/get-weather';
-import { isProductionEnvironment } from '@/lib/constants';
-import { myProvider } from '@/lib/ai/providers';
 import { entitlementsByUserType } from '@/lib/ai/entitlements';
 import { postRequestBodySchema, type PostRequestBody } from './schema';
 import { geolocation } from '@vercel/functions';
@@ -35,6 +26,7 @@ import {
 import { after } from 'next/server';
 import type { Chat } from '@/lib/db/schema';
 import { differenceInSeconds } from 'date-fns';
+import { streamFromBackend } from '@/lib/api/backend';
 
 export const maxDuration = 60;
 
@@ -87,14 +79,14 @@ export async function POST(request: Request) {
       differenceInHours: 24,
     });
 
-    if (messageCount > entitlementsByUserType[userType].maxMessagesPerDay) {
-      return new Response(
-        'You have exceeded your maximum number of messages for the day! Please try again later.',
-        {
-          status: 429,
-        },
-      );
-    }
+    // if (messageCount > entitlementsByUserType[userType].maxMessagesPerDay) {
+    //   return new Response(
+    //     'You have exceeded your maximum number of messages for the day! Please try again later.',
+    //     {
+    //       status: 429,
+    //     },
+    //   );
+    // }
 
     const chat = await getChatById({ id });
 
@@ -148,81 +140,51 @@ export async function POST(request: Request) {
     const streamId = generateUUID();
     await createStreamId({ streamId, chatId: id });
 
+    // Create data stream that uses our backend integration
     const stream = createDataStream({
-      execute: (dataStream) => {
-        const result = streamText({
-          model: myProvider.languageModel(selectedChatModel),
-          system: systemPrompt({ selectedChatModel, requestHints }),
+      execute: async (dataStream) => {
+        // Create the stream from backend
+        const result = await streamFromBackend({
           messages,
-          maxSteps: 5,
-          experimental_activeTools:
-            selectedChatModel === 'chat-model-reasoning'
-              ? []
-              : [
-                  'getWeather',
-                  'createDocument',
-                  'updateDocument',
-                  'requestSuggestions',
-                ],
-          experimental_transform: smoothStream({ chunking: 'word' }),
-          experimental_generateMessageId: generateUUID,
-          tools: {
-            getWeather,
-            createDocument: createDocument({ session, dataStream }),
-            updateDocument: updateDocument({ session, dataStream }),
-            requestSuggestions: requestSuggestions({
-              session,
-              dataStream,
-            }),
-          },
+          userId: session.user.id,
+          userType: session.user.type,
+          chatId: id,
           onFinish: async ({ response }) => {
             if (session.user?.id) {
               try {
-                const assistantId = getTrailingMessageId({
-                  messages: response.messages.filter(
-                    (message) => message.role === 'assistant',
-                  ),
-                });
-
-                if (!assistantId) {
-                  throw new Error('No assistant message found!');
+                // Create a message ID for the assistant response
+                const assistantId = generateUUID();
+                
+                // Combine all text chunks to create the complete message
+                const fullText = response?.textParts?.join('') || '';
+                
+                if (fullText) {
+                  // Save the assistant message
+                  await saveMessages({
+                    messages: [
+                      {
+                        id: assistantId,
+                        chatId: id,
+                        role: 'assistant',
+                        parts: [fullText],
+                        attachments: [],
+                        createdAt: new Date(),
+                      },
+                    ],
+                  });
                 }
-
-                const [, assistantMessage] = appendResponseMessages({
-                  messages: [message],
-                  responseMessages: response.messages,
-                });
-
-                await saveMessages({
-                  messages: [
-                    {
-                      id: assistantId,
-                      chatId: id,
-                      role: assistantMessage.role,
-                      parts: assistantMessage.parts,
-                      attachments:
-                        assistantMessage.experimental_attachments ?? [],
-                      createdAt: new Date(),
-                    },
-                  ],
-                });
-              } catch (_) {
-                console.error('Failed to save chat');
+              } catch (err) {
+                console.error('Failed to save chat', err);
               }
             }
-          },
-          experimental_telemetry: {
-            isEnabled: isProductionEnvironment,
-            functionId: 'stream-text',
-          },
+          }
         });
-
+        
+        // Consume the stream and merge it into the dataStream
         result.consumeStream();
-
-        result.mergeIntoDataStream(dataStream, {
-          sendReasoning: true,
-        });
+        result.mergeIntoDataStream(dataStream);
       },
+      // onFinish handler now passed directly to streamFromBackend
       onError: () => {
         return 'Oops, an error occurred!';
       },
@@ -237,7 +199,8 @@ export async function POST(request: Request) {
     } else {
       return new Response(stream);
     }
-  } catch (_) {
+  } catch (error) {
+    console.error('Unexpected error in chat API:', error);
     return new Response('An error occurred while processing your request!', {
       status: 500,
     });

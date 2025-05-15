@@ -36,7 +36,21 @@
 
 ## Model Providers
 
-This template ships with [xAI](https://x.ai) `grok-2-1212` as the default chat model. However, with the [AI SDK](https://sdk.vercel.ai/docs), you can switch LLM providers to [OpenAI](https://openai.com), [Anthropic](https://anthropic.com), [Cohere](https://cohere.com/), and [many more](https://sdk.vercel.ai/providers/ai-sdk-providers) with just a few lines of code.
+This application has been configured to use a custom backend for AI model integration. It requires the following environment variables:
+
+- `API_BASE_URL`: The base URL for your custom API (e.g., https://api.yourdomain.com)
+- `API_SECRET`: Your authentication secret key for the custom API
+
+The backend API should support:
+
+1. Chat completion streams using the optimized SSE format
+2. Title generation for new conversations
+3. Proper authentication via Bearer token
+
+The chat API will receive:
+- User messages and conversation history
+- System prompts and context information
+- User type and permissions data
 
 ## Deploy Your Own
 
@@ -60,3 +74,11 @@ pnpm dev
 ```
 
 Your app template should now be running on [localhost:3000](http://localhost:3000).
+
+## Backend Integration
+
+This project now uses a custom backend API for all AI model interactions. Key aspects of the implementation:
+
+1. **Server-Side Integration**: All API calls happen server-side, keeping credentials secure
+2. **Streaming Protocol**: Uses the AI SDK Data Stream Protocol format
+3. **Centralized Module**: Backend API logic is centralized in `/lib/api/backend.ts`
