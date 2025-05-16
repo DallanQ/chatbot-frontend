@@ -154,10 +154,8 @@ export async function POST(request: Request) {
               try {
                 // Create a message ID for the assistant response
                 const assistantId = generateUUID();
-                
                 // Combine all text chunks to create the complete message
                 const fullText = response?.textParts?.join('') || '';
-                
                 if (fullText) {
                   // Save the assistant message
                   await saveMessages({
@@ -166,7 +164,7 @@ export async function POST(request: Request) {
                         id: assistantId,
                         chatId: id,
                         role: 'assistant',
-                        parts: [fullText],
+                        parts: [{ type: 'text', text: fullText }],
                         attachments: [],
                         createdAt: new Date(),
                       },
