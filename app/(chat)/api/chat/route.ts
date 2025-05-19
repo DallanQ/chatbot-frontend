@@ -1,9 +1,10 @@
 import {
   appendClientMessage,
+  appendResponseMessages,
   createDataStream,
 } from 'ai';
 import { auth, type UserType } from '@/app/(auth)/auth';
-import { type RequestHints, systemPrompt } from '@/lib/ai/prompts';
+import { type RequestHints } from '@/lib/ai/prompts';
 import {
   createStreamId,
   deleteChatById,
@@ -14,9 +15,8 @@ import {
   saveChat,
   saveMessages,
 } from '@/lib/db/queries';
-import { generateUUID } from '@/lib/utils';
+import { generateUUID, getTrailingMessageId } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
-import { entitlementsByUserType } from '@/lib/ai/entitlements';
 import { postRequestBodySchema, type PostRequestBody } from './schema';
 import { geolocation } from '@vercel/functions';
 import {
@@ -152,30 +152,38 @@ export async function POST(request: Request) {
           onFinish: async ({ response }) => {
             if (session.user?.id) {
               try {
-                // Create a message ID for the assistant response
-                const assistantId = generateUUID();
-                // Combine all text chunks to create the complete message
-                const fullText = response?.textParts?.join('') || '';
-                if (fullText) {
-                  // Save the assistant message
-                  await saveMessages({
-                    messages: [
-                      {
-                        id: assistantId,
-                        chatId: id,
-                        role: 'assistant',
-                        parts: [{ type: 'text', text: fullText }],
-                        attachments: [],
-                        createdAt: new Date(),
-                      },
-                    ],
-                  });
+                const assistantId = getTrailingMessageId({
+                  messages: response.messages.filter(
+                    (message: any) => message.role === 'assistant',
+                  ),
+                });
+
+                if (!assistantId) {
+                  throw new Error('No assistant message found!');
                 }
+
+                const [, assistantMessage] = appendResponseMessages({
+                  messages: [message],
+                  responseMessages: response.messages,
+                });
+
+                await saveMessages({
+                  messages: [
+                    {
+                      id: assistantId,
+                      chatId: id,
+                      role: assistantMessage.role,
+                      parts: assistantMessage.parts,
+                      attachments: [],
+                      createdAt: new Date(),
+                    },
+                  ],
+                });            
               } catch (err) {
                 console.error('Failed to save chat', err);
               }
             }
-          }
+          },
         });
         
         // Consume the stream and merge it into the dataStream

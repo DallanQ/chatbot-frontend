@@ -9,7 +9,30 @@
  */
 
 import { type DataStreamWriter } from 'ai';
-import { generateUUID } from '@/lib/utils';
+import { isTestEnvironment } from '@/lib/constants';
+import { generateUUID } from '../utils';
+
+// This function dynamically imports test utilities only in test environments
+// It will be tree-shaken in production builds
+async function getTestUtils() {
+  if (isTestEnvironment) {
+    try {
+      // Dynamic import means this code won't be included in production builds
+      const { getResponseChunksByPrompt, compareMessages } = await import('@/tests/prompts/utils');
+      const { TEST_PROMPTS } = await import('@/tests/prompts/basic');
+      
+      return {
+        getResponseChunksByPrompt,
+        compareMessages,
+        TEST_PROMPTS
+      };
+    } catch (error) {
+      console.warn('Failed to load test utilities:', error);
+    }
+  }
+  
+  return null;
+}
 
 // Type for backend request options
 export type BackendRequestOptions = {
@@ -107,6 +130,12 @@ export async function callBackend<T = any>(
  * Generate a title using the backend
  */
 export async function generateTitleWithBackend(message: string): Promise<string> {
+  // In test environments, return a fixed title
+  if (isTestEnvironment) {
+    return 'Test Conversation';
+  }
+  
+  // Real implementation for non-test environments
   try {
     const result = await callBackend<{ text: string }>('/api/generate_title', {
       method: 'POST',
@@ -122,6 +151,118 @@ export async function generateTitleWithBackend(message: string): Promise<string>
 }
 
 /**
+ * Create a mock stream for test environments that matches the interface 
+ * of the real stream but uses predefined responses
+ */
+async function createMockStreamForTests(params: {
+  messages: any[];
+  userId: string;
+  userType: string;
+  chatId: string;
+  onFinish?: ({ response }: { response: any }) => Promise<void>;
+}) {
+  // Load test utilities
+  const testUtils = await getTestUtils();
+  
+  if (!testUtils) {
+    throw new Error('Could not load test utilities in test environment');
+  }
+  
+  // Generate a messageId
+  const messageId = generateUUID();
+
+  // Get the last message - this is what we're responding to
+  const lastMessage = params.messages[params.messages.length - 1];
+  
+  // Determine if reasoning mode is enabled - this affects which mock response to use
+  const isReasoningEnabled = params.userType === 'ada' || params.userType === 'premium';
+  
+  // Get predefined response chunks for this prompt
+  let responseChunks = testUtils.getResponseChunksByPrompt([{role: lastMessage.role, content: [{type: 'text', text: lastMessage.content}]}], isReasoningEnabled);
+
+  return {
+    consumeStream: () => {
+      // Nothing to do here in mock version
+    },
+    
+    mergeIntoDataStream: (dataStream: DataStreamWriter) => {
+      // Simulate async streaming of response chunks
+      (async () => {
+        // Extract text parts for the onFinish callback
+        const textParts: string[] = [];
+        
+        // Gather the text parts for the onFinish callback
+        for (const chunk of responseChunks) {
+          if (chunk.type === 'text-delta') {
+            textParts.push(chunk.textDelta);
+          }
+        }
+        
+        // For tests, we need to send a properly formatted message directly
+        // Just like the real API would
+        // Create a readable stream from the response chunks
+        const encoder = new TextEncoder();
+        
+        const textChunks: Uint8Array[] = [];
+        textChunks.push(encoder.encode(`f:${JSON.stringify({ messageId })}\n`));
+        for (const chunk of responseChunks) {
+          if (chunk.type === 'text-delta') {
+            textChunks.push(encoder.encode(`0:${JSON.stringify(chunk.textDelta)}\n`));
+          } else if (chunk.type === 'finish') {
+            textChunks.push(encoder.encode(`e:${JSON.stringify({
+              finishReason: chunk.finishReason,
+              usage: {
+                promptTokens: chunk.usage.promptTokens,
+                completionTokens: chunk.usage.completionTokens
+              },
+              isContinued: false
+            })}\n`));
+            textChunks.push(encoder.encode(`d:${JSON.stringify({
+              finishReason: chunk.finishReason,
+              usage: {
+                promptTokens: chunk.usage.promptTokens,
+                completionTokens: chunk.usage.completionTokens
+              }
+            })}\n`));
+          }
+        }
+
+        // Create a ReadableStream from our chunks
+        const mockStream = new ReadableStream({
+          async start(controller) {
+            // Send all text chunks
+            for (const chunk of textChunks) {
+              // Add a short delay before sending each chunk
+              await new Promise(resolve => setTimeout(resolve, 50));
+              controller.enqueue(chunk);
+            }
+            
+            controller.close();
+          }
+        });
+        
+        // Merge the mock stream into the data stream
+        dataStream.merge(mockStream);
+        
+        // If onFinish callback is provided, call it with the collected response
+        if (params.onFinish) {
+          const parts = [{type: 'text', text: textParts.join('') || ''}];
+          await params.onFinish({ 
+            response: {
+              messages: [{
+                id: messageId,
+                role: 'assistant',
+                parts: parts, // modern
+                content: parts, // legacy
+              }]
+            }});
+        }
+      })();
+    }
+  };
+}
+
+/**
  * Stream text from the backend chat API
  * Returns an object with methods to consume and merge the stream, similar to streamText
  */
@@ -134,6 +275,11 @@ export async function streamFromBackend(
     onFinish?: ({ response }: { response: any }) => Promise<void>;
   }
 ): Promise<{ consumeStream: () => void; mergeIntoDataStream: (dataStream: DataStreamWriter, options?: any) => void }> {
+  // Check if we're in a test environment - if so, use mock implementation
+  if (isTestEnvironment) {
+    return createMockStreamForTests(params);
+  }
+  
   // Extract the onFinish callback and pass the rest to the backend
   const { onFinish, ...otherParams } = params;
   
@@ -164,10 +310,9 @@ export async function streamFromBackend(
   }
   
   // Track the complete response for onFinish callback
-  const responseData = {
-    textParts: [] as string[]
-  };
-  
+  const textParts: string[] = [];
+  let messageId: string | null = null;
+
   // Create a transform stream that simply passes through the data from backend 
   // but also collects text parts for the onFinish callback
   const createPassthroughStream = () => {
@@ -195,9 +340,19 @@ export async function streamFromBackend(
             // Text chunk - add to our collected text parts
             try {
               const textContent = JSON.parse(content);
-              responseData.textParts.push(textContent);
+              textParts.push(textContent);
             } catch (e) {
               console.error('Error in text chunk handling:', e);
+            }
+          } else if (type === 'f') {
+            // Extract message ID from the first chunk
+            try {
+              const metadata = JSON.parse(content);
+              if (metadata.messageId) {
+                messageId = metadata.messageId;
+              }
+            } catch (e) {
+              console.error('Error parsing message ID in stream:', e);
             }
           }
         }
@@ -242,63 +397,35 @@ export async function streamFromBackend(
         // Prepare the final stream for merging
         const formattedStream = streamForMerge.pipeThrough(new TextEncoderStream());
         
-        // If merge method exists, use it to connect our stream to the data stream
-        if (typeof ds.merge === 'function') {
-          // Use type assertion to tell TypeScript this is the correct format
-          ds.merge(formattedStream as any);
-          
-          // Setup onFinish handler for when the stream completes
-          if (onFinish) {
-            // Use the monitoring stream to detect completion
-            const reader = streamForMonitor.getReader();
-            (async () => {
-              try {
-                while (true) {
-                  const { done } = await reader.read();
-                  if (done) {
-                    await onFinish({ response: responseData });
-                    break;
-                  }
-                }
-              } catch (err) {
-                console.error('Error monitoring stream:', err);
-              } finally {
-                reader.releaseLock();
-              }
-            })();
-          }
-        } else {
-          // Fallback to manually reading the stream and writing to data stream
-          const reader = formattedStream.getReader();
-          
+        // Use the formatted stream directly without additional wrapping
+        // Let the SDK handle message IDs internally
+        
+        // Use type assertion to tell TypeScript this is the correct format
+        ds.merge(formattedStream as any);
+        
+        // Setup onFinish handler for when the stream completes
+        if (onFinish) {
+          // Use the monitoring stream to detect completion
+          const reader = streamForMonitor.getReader();
           (async () => {
             try {
               while (true) {
-                const { done, value } = await reader.read();
-                
+                const { done } = await reader.read();
                 if (done) {
-                  // If we have an onFinish callback, call it with the collected response
-                  if (onFinish) {
-                    await onFinish({ response: responseData });
-                  }
+                  const parts = [{type: 'text', text: textParts.join('') || ''}];
+                  await onFinish({ response: {
+                    messages: [{
+                      id: messageId,
+                      role: 'assistant',
+                      parts: parts, // modern
+                      content: parts, // legacy
+                    }]
+                  }});
                   break;
-                }
-                
-                try {
-                  // Write the value to the data stream
-                  if (typeof value === 'string') {
-                    ds.writeData(value);
-                  } else {
-                    // Convert Uint8Array to string before writing to the data stream
-                    const decodedValue = new TextDecoder().decode(value);
-                    ds.writeData(decodedValue);
-                  }
-                } catch (error) {
-                  console.error(`Error processing chunk:`, error);
                 }
               }
             } catch (err) {
-              console.error('Error reading stream:', err);
+              console.error('Error monitoring stream:', err);
             } finally {
               reader.releaseLock();
             }
@@ -336,10 +463,19 @@ export async function streamFromBackend(
         }
         
         // Write the error directly to the data stream
-        ds.writeData({
-          type: 'error',
-          error: errorMessage
+        // Create a readable stream with the error message
+        const encoder = new TextEncoder();
+        const errorChunk = encoder.encode(`3:${JSON.stringify({ error: errorMessage })}\n`);
+        
+        const errorStream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(errorChunk);
+            controller.close();
+          }
         });
+        
+        // Merge the error stream into the data stream
+        ds.merge(errorStream);
         
         // If onFinish exists, call it with an empty response
         if (onFinish) {

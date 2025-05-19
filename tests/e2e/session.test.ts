@@ -191,17 +191,18 @@ test.describe('Entitlements', () => {
     chatPage = new ChatPage(page);
   });
 
-  test('Guest user cannot send more than 20 messages/day', async () => {
-    await chatPage.createNewChat();
+  // NOTE: throttling will be implemented in the backend
+  // test('Guest user cannot send more than 20 messages/day', async () => {
+  //   await chatPage.createNewChat();
 
-    for (let i = 0; i <= 20; i++) {
-      await chatPage.sendUserMessage('Why is the sky blue?');
-      await chatPage.isGenerationComplete();
-    }
+  //   for (let i = 0; i <= 20; i++) {
+  //     await chatPage.sendUserMessage('Why is the sky blue?');
+  //     await chatPage.isGenerationComplete();
+  //   }
 
-    await chatPage.sendUserMessage('Why is the sky blue?');
-    await chatPage.expectToastToContain(
-      'You have exceeded your maximum number of messages for the day! Please try again later.',
-    );
-  });
+  //   await chatPage.sendUserMessage('Why is the sky blue?');
+  //   await chatPage.expectToastToContain(
+  //     'You have exceeded your maximum number of messages for the day! Please try again later.',
+  //   );
+  // });
 });
