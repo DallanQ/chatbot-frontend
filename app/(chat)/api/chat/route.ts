@@ -4,7 +4,7 @@ import {
   createDataStream,
 } from 'ai';
 import { auth, type UserType } from '@/app/(auth)/auth';
-import { type RequestHints } from '@/lib/ai/prompts';
+import type { RequestHints } from '@/lib/ai/prompts';
 import {
   createStreamId,
   deleteChatById,
@@ -178,14 +178,14 @@ export async function POST(request: Request) {
                       createdAt: new Date(),
                     },
                   ],
-                });            
+                });
               } catch (err) {
                 console.error('Failed to save chat', err);
               }
             }
           },
         });
-        
+
         // Consume the stream and merge it into the dataStream
         result.consumeStream();
         result.mergeIntoDataStream(dataStream);

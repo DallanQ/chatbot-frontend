@@ -1,5 +1,5 @@
-import fs from 'fs';
-import path from 'path';
+import fs from 'node:fs';
+import path from 'node:path';
 import { isTestEnvironment } from './constants';
 
 /**
@@ -8,15 +8,14 @@ import { isTestEnvironment } from './constants';
  */
 export function logToTestFile(message: string | object) {
   if (!isTestEnvironment) return;
-  
+
   try {
-    const logMessage = typeof message === 'object' 
-      ? JSON.stringify(message, null, 2)
-      : message;
-      
+    const logMessage =
+      typeof message === 'object' ? JSON.stringify(message, null, 2) : message;
+
     fs.appendFileSync(
       path.join(process.cwd(), 'test-logs.txt'),
-      `${new Date().toISOString()} - ${logMessage}\n`
+      `${new Date().toISOString()} - ${logMessage}\n`,
     );
   } catch (error) {
     // Silent fail - don't break tests if logging fails
@@ -30,7 +29,7 @@ export function logToTestFile(message: string | object) {
  */
 export function clearTestLogs() {
   if (!isTestEnvironment) return;
-  
+
   try {
     fs.writeFileSync(path.join(process.cwd(), 'test-logs.txt'), '');
   } catch (error) {

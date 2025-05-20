@@ -1,6 +1,6 @@
 'use server';
 
-import { generateText, type UIMessage } from 'ai';
+import type { UIMessage } from 'ai';
 import { cookies } from 'next/headers';
 import {
   deleteMessagesByChatIdAfterTimestamp,
@@ -23,11 +23,11 @@ export async function generateTitleFromUserMessage({
   try {
     // Extract the message content
     const messageContent = message.parts[0] || '';
-    
+
     // Use our backend integration to generate the title
     const title = await generateTitleWithBackend(messageContent);
     console.log('generateTitleWithBackend:', title);
-    
+
     return title;
   } catch (error) {
     console.error('Error generating title with backend:', error);

@@ -148,8 +148,12 @@ test.describe
       const secondResponseBodyString = secondResponseBody.toString();
       expect(firstResponseBodyString.substring(0, 2)).toEqual('f:');
       expect(secondResponseBodyString.substring(0, 2)).toEqual('2:');
-      const firstResponseBodyJson = JSON.parse(firstResponseBodyString.substring(2).split('\n')[0]);
-      const secondResponseBodyJson = JSON.parse(secondResponseBodyString.substring(2).split('\n')[0]);
+      const firstResponseBodyJson = JSON.parse(
+        firstResponseBodyString.substring(2).split('\n')[0],
+      );
+      const secondResponseBodyJson = JSON.parse(
+        secondResponseBodyString.substring(2).split('\n')[0],
+      );
       const secondMessage = JSON.parse(secondResponseBodyJson[0].message);
       expect(firstResponseBodyJson.messageId).toEqual(secondMessage.id);
     });
@@ -349,8 +353,12 @@ test.describe
       const secondResponseBodyString = secondResponseContent.toString();
       expect(firstResponseBodyString.substring(0, 2)).toEqual('f:');
       expect(secondResponseBodyString.substring(0, 2)).toEqual('2:');
-      const firstResponseBodyJson = JSON.parse(firstResponseBodyString.substring(2).split('\n')[0]);
-      const secondResponseBodyJson = JSON.parse(secondResponseBodyString.substring(2).split('\n')[0]);
+      const firstResponseBodyJson = JSON.parse(
+        firstResponseBodyString.substring(2).split('\n')[0],
+      );
+      const secondResponseBodyJson = JSON.parse(
+        secondResponseBodyString.substring(2).split('\n')[0],
+      );
       const secondMessage = JSON.parse(secondResponseBodyJson[0].message);
       expect(firstResponseBodyJson.messageId).toEqual(secondMessage.id);
     });
