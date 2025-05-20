@@ -10,29 +10,7 @@
 
 import { type DataStreamWriter } from 'ai';
 import { isTestEnvironment } from '@/lib/constants';
-import { generateUUID } from '../utils';
-
-// This function dynamically imports test utilities only in test environments
-// It will be tree-shaken in production builds
-async function getTestUtils() {
-  if (isTestEnvironment) {
-    try {
-      // Dynamic import means this code won't be included in production builds
-      const { getResponseChunksByPrompt, compareMessages } = await import('@/tests/prompts/utils');
-      const { TEST_PROMPTS } = await import('@/tests/prompts/basic');
-      
-      return {
-        getResponseChunksByPrompt,
-        compareMessages,
-        TEST_PROMPTS
-      };
-    } catch (error) {
-      console.warn('Failed to load test utilities:', error);
-    }
-  }
-  
-  return null;
-}
+import { generateTitleWithBackendMock, streamFromBackendMock } from './backend-mocks';
 
 // Type for backend request options
 export type BackendRequestOptions = {
@@ -132,7 +110,7 @@ export async function callBackend<T = any>(
 export async function generateTitleWithBackend(message: string): Promise<string> {
   // In test environments, return a fixed title
   if (isTestEnvironment) {
-    return 'Test Conversation';
+    return generateTitleWithBackendMock(message);
   }
   
   // Real implementation for non-test environments
@@ -151,118 +129,6 @@ export async function generateTitleWithBackend(message: string): Promise<string>
 }
 
 /**
- * Create a mock stream for test environments that matches the interface 
- * of the real stream but uses predefined responses
- */
-async function createMockStreamForTests(params: {
-  messages: any[];
-  userId: string;
-  userType: string;
-  chatId: string;
-  onFinish?: ({ response }: { response: any }) => Promise<void>;
-}) {
-  // Load test utilities
-  const testUtils = await getTestUtils();
-  
-  if (!testUtils) {
-    throw new Error('Could not load test utilities in test environment');
-  }
-  
-  // Generate a messageId
-  const messageId = generateUUID();
-
-  // Get the last message - this is what we're responding to
-  const lastMessage = params.messages[params.messages.length - 1];
-  
-  // Determine if reasoning mode is enabled - this affects which mock response to use
-  const isReasoningEnabled = params.userType === 'ada' || params.userType === 'premium';
-  
-  // Get predefined response chunks for this prompt
-  let responseChunks = testUtils.getResponseChunksByPrompt([{role: lastMessage.role, content: [{type: 'text', text: lastMessage.content}]}], isReasoningEnabled);
-
-  return {
-    consumeStream: () => {
-      // Nothing to do here in mock version
-    },
-    
-    mergeIntoDataStream: (dataStream: DataStreamWriter) => {
-      // Simulate async streaming of response chunks
-      (async () => {
-        // Extract text parts for the onFinish callback
-        const textParts: string[] = [];
-        
-        // Gather the text parts for the onFinish callback
-        for (const chunk of responseChunks) {
-          if (chunk.type === 'text-delta') {
-            textParts.push(chunk.textDelta);
-          }
-        }
-        
-        // For tests, we need to send a properly formatted message directly
-        // Just like the real API would
-        // Create a readable stream from the response chunks
-        const encoder = new TextEncoder();
-        
-        const textChunks: Uint8Array[] = [];
-        textChunks.push(encoder.encode(`f:${JSON.stringify({ messageId })}\n`));
-        for (const chunk of responseChunks) {
-          if (chunk.type === 'text-delta') {
-            textChunks.push(encoder.encode(`0:${JSON.stringify(chunk.textDelta)}\n`));
-          } else if (chunk.type === 'finish') {
-            textChunks.push(encoder.encode(`e:${JSON.stringify({
-              finishReason: chunk.finishReason,
-              usage: {
-                promptTokens: chunk.usage.promptTokens,
-                completionTokens: chunk.usage.completionTokens
-              },
-              isContinued: false
-            })}\n`));
-            textChunks.push(encoder.encode(`d:${JSON.stringify({
-              finishReason: chunk.finishReason,
-              usage: {
-                promptTokens: chunk.usage.promptTokens,
-                completionTokens: chunk.usage.completionTokens
-              }
-            })}\n`));
-          }
-        }
-
-        // Create a ReadableStream from our chunks
-        const mockStream = new ReadableStream({
-          async start(controller) {
-            // Send all text chunks
-            for (const chunk of textChunks) {
-              // Add a short delay before sending each chunk
-              await new Promise(resolve => setTimeout(resolve, 50));
-              controller.enqueue(chunk);
-            }
-            
-            controller.close();
-          }
-        });
-        
-        // Merge the mock stream into the data stream
-        dataStream.merge(mockStream);
-        
-        // If onFinish callback is provided, call it with the collected response
-        if (params.onFinish) {
-          const parts = [{type: 'text', text: textParts.join('') || ''}];
-          await params.onFinish({ 
-            response: {
-              messages: [{
-                id: messageId,
-                role: 'assistant',
-                parts: parts, // modern
-                content: parts, // legacy
-              }]
-            }});
-        }
-      })();
-    }
-  };
-}
-
-/**
  * Stream text from the backend chat API
  * Returns an object with methods to consume and merge the stream, similar to streamText
  */
@@ -277,7 +143,7 @@ export async function streamFromBackend(
 ): Promise<{ consumeStream: () => void; mergeIntoDataStream: (dataStream: DataStreamWriter, options?: any) => void }> {
   // Check if we're in a test environment - if so, use mock implementation
   if (isTestEnvironment) {
-    return createMockStreamForTests(params);
+    return streamFromBackendMock(params);
   }
   
   // Extract the onFinish callback and pass the rest to the backend
