@@ -1,6 +1,3 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { chatModels } from '@/lib/ai/models';
 import { expect, type Page } from '@playwright/test';
 
 export class ChatPage {
@@ -74,62 +71,6 @@ export class ChatPage {
 
   async isElementNotVisible(elementId: string) {
     await expect(this.page.getByTestId(elementId)).not.toBeVisible();
-  }
-
-  async addImageAttachment() {
-    this.page.on('filechooser', async (fileChooser) => {
-      const filePath = path.join(
-        process.cwd(),
-        'public',
-        'images',
-        'mouth of the seine, monet.jpg',
-      );
-      const imageBuffer = fs.readFileSync(filePath);
-
-      await fileChooser.setFiles({
-        name: 'mouth of the seine, monet.jpg',
-        mimeType: 'image/jpeg',
-        buffer: imageBuffer,
-      });
-    });
-
-    await this.page.getByTestId('attachments-button').click();
-  }
-
-  public async getSelectedModel() {
-    const modelId = await this.page.getByTestId('model-selector').innerText();
-    return modelId;
-  }
-
-  public async chooseModelFromSelector(chatModelId: string) {
-    const chatModel = chatModels.find(
-      (chatModel) => chatModel.id === chatModelId,
-    );
-
-    if (!chatModel) {
-      throw new Error(`Model with id ${chatModelId} not found`);
-    }
-
-    await this.page.getByTestId('model-selector').click();
-    await this.page.getByTestId(`model-selector-item-${chatModelId}`).click();
-    expect(await this.getSelectedModel()).toBe(chatModel.name);
-  }
-
-  public async getSelectedVisibility() {
-    const visibilityId = await this.page
-      .getByTestId('visibility-selector')
-      .innerText();
-    return visibilityId;
-  }
-
-  public async chooseVisibilityFromSelector(
-    chatVisibility: 'public' | 'private',
-  ) {
-    await this.page.getByTestId('visibility-selector').click();
-    await this.page
-      .getByTestId(`visibility-selector-item-${chatVisibility}`)
-      .click();
-    expect(await this.getSelectedVisibility()).toBe(chatVisibility);
   }
 
   async getRecentAssistantMessage() {

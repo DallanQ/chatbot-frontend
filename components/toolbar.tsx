@@ -24,9 +24,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-import { ArrowUpIcon, StopIcon, SummarizeIcon } from './icons';
-import { artifactDefinitions, type ArtifactKind } from './artifact';
-import type { ArtifactToolbarItem } from './create-artifact';
+import { ArrowUpIcon, SummarizeIcon } from './icons';
 import type { UseChatHelpers } from '@ai-sdk/react';
 
 type ToolProps = {
@@ -252,7 +250,7 @@ export const Tools = ({
   append: UseChatHelpers['append'];
   isAnimating: boolean;
   setIsToolbarVisible: Dispatch<SetStateAction<boolean>>;
-  tools: Array<ArtifactToolbarItem>;
+  tools: Array<any>;
 }) => {
   const [primaryTool, ...secondaryTools] = tools;
 
@@ -301,7 +299,6 @@ const PureToolbar = ({
   status,
   stop,
   setMessages,
-  artifactKind,
 }: {
   isToolbarVisible: boolean;
   setIsToolbarVisible: Dispatch<SetStateAction<boolean>>;
@@ -309,7 +306,6 @@ const PureToolbar = ({
   append: UseChatHelpers['append'];
   stop: UseChatHelpers['stop'];
   setMessages: UseChatHelpers['setMessages'];
-  artifactKind: ArtifactKind;
 }) => {
   const toolbarRef = useRef<HTMLDivElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
@@ -353,107 +349,12 @@ const PureToolbar = ({
     }
   }, [status, setIsToolbarVisible]);
 
-  const artifactDefinition = artifactDefinitions.find(
-    (definition) => definition.kind === artifactKind,
-  );
-
-  if (!artifactDefinition) {
-    throw new Error('Artifact definition not found!');
-  }
-
-  const toolsByArtifactKind = artifactDefinition.toolbar;
-
-  if (toolsByArtifactKind.length === 0) {
-    return null;
-  }
-
-  return (
-    <TooltipProvider delayDuration={0}>
-      <motion.div
-        className="cursor-pointer absolute right-6 bottom-6 p-1.5 border rounded-full shadow-lg bg-background flex flex-col justify-end"
-        initial={{ opacity: 0, y: -20, scale: 1 }}
-        animate={
-          isToolbarVisible
-            ? selectedTool === 'adjust-reading-level'
-              ? {
-                  opacity: 1,
-                  y: 0,
-                  height: 6 * 43,
-                  transition: { delay: 0 },
-                  scale: 0.95,
-                }
-              : {
-                  opacity: 1,
-                  y: 0,
-                  height: toolsByArtifactKind.length * 50,
-                  transition: { delay: 0 },
-                  scale: 1,
-                }
-            : { opacity: 1, y: 0, height: 54, transition: { delay: 0 } }
-        }
-        exit={{ opacity: 0, y: -20, transition: { duration: 0.1 } }}
-        transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-        onHoverStart={() => {
-          if (status === 'streaming') return;
-
-          cancelCloseTimer();
-          setIsToolbarVisible(true);
-        }}
-        onHoverEnd={() => {
-          if (status === 'streaming') return;
-
-          startCloseTimer();
-        }}
-        onAnimationStart={() => {
-          setIsAnimating(true);
-        }}
-        onAnimationComplete={() => {
-          setIsAnimating(false);
-        }}
-        ref={toolbarRef}
-      >
-        {status === 'streaming' ? (
-          <motion.div
-            key="stop-icon"
-            initial={{ scale: 1 }}
-            animate={{ scale: 1.4 }}
-            exit={{ scale: 1 }}
-            className="p-3"
-            onClick={() => {
-              stop();
-              setMessages((messages) => messages);
-            }}
-          >
-            <StopIcon />
-          </motion.div>
-        ) : selectedTool === 'adjust-reading-level' ? (
-          <ReadingLevelSelector
-            key="reading-level-selector"
-            append={append}
-            setSelectedTool={setSelectedTool}
-            isAnimating={isAnimating}
-          />
-        ) : (
-          <Tools
-            key="tools"
-            append={append}
-            isAnimating={isAnimating}
-            isToolbarVisible={isToolbarVisible}
-            selectedTool={selectedTool}
-            setIsToolbarVisible={setIsToolbarVisible}
-            setSelectedTool={setSelectedTool}
-            tools={toolsByArtifactKind}
-          />
-        )}
-      </motion.div>
-    </TooltipProvider>
-  );
+  return null;
 };
 
 export const Toolbar = memo(PureToolbar, (prevProps, nextProps) => {
   if (prevProps.status !== nextProps.status) return false;
   if (prevProps.isToolbarVisible !== nextProps.isToolbarVisible) return false;
-  if (prevProps.artifactKind !== nextProps.artifactKind) return false;
 
   return true;
 });

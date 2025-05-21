@@ -7,11 +7,9 @@ import useSWR, { useSWRConfig } from 'swr';
 import { ChatHeader } from '@/components/chat-header';
 import type { Vote } from '@/lib/db/schema';
 import { fetcher, generateUUID } from '@/lib/utils';
-import { Artifact } from './artifact';
 import { MultimodalInput } from './multimodal-input';
 import { Messages } from './messages';
 import type { VisibilityType } from './visibility-selector';
-import { useArtifactSelector } from '@/hooks/use-artifact';
 import { unstable_serialize } from 'swr/infinite';
 import { getChatHistoryPaginationKey } from './sidebar-history';
 import { toast } from './toast';
@@ -102,7 +100,6 @@ export function Chat({
   );
 
   const [attachments, setAttachments] = useState<Array<Attachment>>([]);
-  const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
 
   useAutoResume({
     autoResume,
@@ -131,7 +128,7 @@ export function Chat({
           setMessages={setMessages}
           reload={reload}
           isReadonly={isReadonly}
-          isArtifactVisible={isArtifactVisible}
+          isArtifactVisible={false}
         />
 
         <form className="flex mx-auto px-4 bg-background pb-4 md:pb-6 gap-2 w-full md:max-w-3xl">
@@ -153,24 +150,6 @@ export function Chat({
           )}
         </form>
       </div>
-
-      <Artifact
-        chatId={id}
-        input={input}
-        setInput={setInput}
-        handleSubmit={handleSubmit}
-        status={status}
-        stop={stop}
-        attachments={attachments}
-        setAttachments={setAttachments}
-        append={append}
-        messages={messages}
-        setMessages={setMessages}
-        reload={reload}
-        votes={votes}
-        isReadonly={isReadonly}
-        selectedVisibilityType={visibilityType}
-      />
     </>
   );
 }
