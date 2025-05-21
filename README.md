@@ -24,7 +24,7 @@
 - [AI SDK](https://sdk.vercel.ai/docs)
   - Unified API for generating text, structured objects, and tool calls with LLMs
   - Hooks for building dynamic chat and generative user interfaces
-  - Supports xAI (default), OpenAI, Fireworks, and other model providers
+  - Uses a custom backend for AI model integration
 - [shadcn/ui](https://ui.shadcn.com)
   - Styling with [Tailwind CSS](https://tailwindcss.com)
   - Component primitives from [Radix UI](https://radix-ui.com) for accessibility and flexibility
@@ -82,3 +82,9 @@ This project now uses a custom backend API for all AI model interactions. Key as
 1. **Server-Side Integration**: All API calls happen server-side, keeping credentials secure
 2. **Streaming Protocol**: Uses the AI SDK Data Stream Protocol format
 3. **Centralized Module**: Backend API logic is centralized in `/lib/api/backend.ts`
+
+### TODO
+
+- [ ] Add a way to upload files to the backend
+- [ ] Add a way to download files from the backend
+- [ ] Add a way to delete files from the backend

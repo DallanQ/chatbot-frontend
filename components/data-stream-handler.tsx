@@ -2,7 +2,6 @@
 
 import { useChat } from '@ai-sdk/react';
 import { useEffect, useRef } from 'react';
-import type { Suggestion } from '@/lib/db/schema';
 
 export type DataStreamDelta = {
   type:
@@ -16,7 +15,7 @@ export type DataStreamDelta = {
     | 'clear'
     | 'finish'
     | 'kind';
-  content: string | Suggestion;
+  content: string;
 };
 
 export function DataStreamHandler({ id }: { id: string }) {
