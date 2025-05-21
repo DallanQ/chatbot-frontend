@@ -53,4 +53,4 @@ test: ## Run unit tests only (currently there are no separate unit tests, so thi
 
 test-all: ## Run all tests
 	@echo -e "$(COLOR_BOLD)Running all tests...$(COLOR_RESET)"
-	PLAYWRIGHT=True pnpm exec playwright test --reporter=dot
+	PLAYWRIGHT=True NEXT_PUBLIC_PLAYWRIGHT=True pnpm exec playwright test --reporter=dot

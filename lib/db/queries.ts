@@ -72,6 +72,47 @@ export async function createGuestUser() {
   }
 }
 
+export async function getOrCreateUserFromOAuth({
+  email,
+  provider,
+  providerAccountId,
+}: {
+  email?: string | null;
+  provider: string;
+  providerAccountId: string;
+}) {
+  try {
+    // First, try to find user by email if provided
+    if (email) {
+      const users = await getUser(email);
+      if (users.length > 0) {
+        return users[0];
+      }
+    }
+
+    // If no user found by email, create a new one
+    const newUserEmail =
+      email || `${provider}-${providerAccountId}@oauth.local`;
+
+    const result = await db
+      .insert(user)
+      .values({
+        email: newUserEmail,
+        // No password for OAuth users - they authenticate via OAuth
+        password: null,
+      })
+      .returning({
+        id: user.id,
+        email: user.email,
+      });
+
+    return result[0];
+  } catch (error) {
+    console.error('Failed to get or create OAuth user in database');
+    throw error;
+  }
+}
+
 export async function saveChat({
   id,
   userId,

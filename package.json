@@ -16,7 +16,7 @@
     "db:pull": "drizzle-kit pull",
     "db:check": "drizzle-kit check",
     "db:up": "drizzle-kit up",
-    "test": "export PLAYWRIGHT=True && pnpm exec playwright test"
+    "test": "export PLAYWRIGHT=True && export NEXT_PUBLIC_PLAYWRIGHT=True && pnpm exec playwright test"
   },
   "dependencies": {
     "@ai-sdk/react": "^1.2.11",
