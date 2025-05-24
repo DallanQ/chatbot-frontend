@@ -146,7 +146,6 @@ export async function generateTitleWithBackend(
 export async function streamFromBackend(params: {
   messages: any[];
   userId: string;
-  userType: string;
   chatId: string;
   onFinish?: ({ response }: { response: any }) => Promise<void>;
 }): Promise<{

@@ -8,7 +8,7 @@ import {
   getOrCreateUserFromOAuth,
 } from '@/lib/db/queries';
 import { authConfig } from './auth.config';
-import { DUMMY_PASSWORD, isTestEnvironment } from '@/lib/constants';
+import { isTestEnvironment } from '@/lib/constants';
 import type { DefaultJWT } from 'next-auth/jwt';
 
 export type UserType = 'guest' | 'regular';
@@ -61,22 +61,21 @@ const getProviders = () => {
           const users = await getUser(email);
 
           if (users.length === 0) {
-            await compare(password, DUMMY_PASSWORD);
             return null;
           }
 
           const [user] = users;
 
           if (!user.password) {
-            await compare(password, DUMMY_PASSWORD);
+            // TODO: change to passwordHash
             return null;
           }
 
-          const passwordsMatch = await compare(password, user.password);
+          const passwordsMatch = await compare(password, user.password); // TODO: change to passwordHash
 
           if (!passwordsMatch) return null;
 
-          return { ...user, type: 'regular' };
+          return { ...user, type: 'regular', passwordHash: undefined };
         },
       }),
     );

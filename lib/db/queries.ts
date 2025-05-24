@@ -47,10 +47,11 @@ export async function getUser(email: string): Promise<Array<User>> {
 }
 
 export async function createUser(email: string, password: string) {
-  const hashedPassword = generateHashedPassword(password);
+  // hash the password before saving it to the database
+  const passwordHash = generateHashedPassword(password);
 
   try {
-    return await db.insert(user).values({ email, password: hashedPassword });
+    return await db.insert(user).values({ email, password: passwordHash }); // TODO: change to passwordHash
   } catch (error) {
     console.error('Failed to create user in database');
     throw error;
@@ -63,6 +64,7 @@ export async function createGuestUser() {
 
   try {
     return await db.insert(user).values({ email, password }).returning({
+      // TODO don't pass email or password
       id: user.id,
       email: user.email,
     });

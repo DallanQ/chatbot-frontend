@@ -45,7 +45,6 @@ export async function generateTitleWithBackendMock(
 export async function streamFromBackendMock(params: {
   messages: any[];
   userId: string;
-  userType: string;
   chatId: string;
   onFinish?: ({ response }: { response: any }) => Promise<void>;
 }) {
@@ -62,10 +61,6 @@ export async function streamFromBackendMock(params: {
   // Get the last message - this is what we're responding to
   const lastMessage = params.messages[params.messages.length - 1];
 
-  // Determine if reasoning mode is enabled - this affects which mock response to use
-  const isReasoningEnabled =
-    params.userType === 'ada' || params.userType === 'premium';
-
   // Get predefined response chunks for this prompt
   const responseChunks = testUtils.getResponseChunksByPrompt(
     [
@@ -74,7 +69,7 @@ export async function streamFromBackendMock(params: {
         content: [{ type: 'text', text: lastMessage.content }],
       },
     ],
-    isReasoningEnabled,
+    false,
   );
 
   return {
