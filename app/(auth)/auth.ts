@@ -6,7 +6,7 @@ import {
   createGuestUser,
   getUser,
   getOrCreateUserFromOAuth,
-} from '@/lib/db/queries';
+} from '@/lib/api/users';
 import { authConfig } from './auth.config';
 import { isTestEnvironment } from '@/lib/constants';
 import type { DefaultJWT } from 'next-auth/jwt';
@@ -66,12 +66,11 @@ const getProviders = () => {
 
           const [user] = users;
 
-          if (!user.password) {
-            // TODO: change to passwordHash
+          if (!user.passwordHash) {
             return null;
           }
 
-          const passwordsMatch = await compare(password, user.password); // TODO: change to passwordHash
+          const passwordsMatch = await compare(password, user.passwordHash);
 
           if (!passwordsMatch) return null;
 

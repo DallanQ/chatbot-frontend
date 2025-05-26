@@ -1,151 +1,274 @@
-/**
- * Backend API Integration Module
- *
- * This module provides utilities for interacting with the custom backend API.
- * It handles authentication, request formatting, and response processing.
- *
- * IMPORTANT: This code only runs on the server side and should never be imported
- * directly in client components.
- */
-
+import 'server-only';
 import type { DataStreamWriter } from 'ai';
 import { isTestEnvironment } from '@/lib/constants';
+import { callBackend, BackendError } from './utils';
 import {
-  generateTitleWithBackendMock,
-  streamFromBackendMock,
-} from './backend-mocks';
+  type Chat,
+  type DBMessage,
+  chatSchema,
+  messageSchema,
+  voteSchema,
+  streamIdsResponseSchema,
+} from './chat-schemas';
+import type { VisibilityType } from '@/components/visibility-selector';
+import { streamFromBackendMock } from './chat-mocks';
 
-// Type for backend request options
-export type BackendRequestOptions = {
-  headers?: Record<string, string>;
-  timeout?: number;
-};
-
-// Error class for backend request failures
-export class BackendError extends Error {
-  status: number;
-
-  constructor(message: string, status: number) {
-    super(message);
-    this.status = status;
-    this.name = 'BackendError';
-  }
-}
-
-/**
- * Make a standard request to the backend API
- */
-export async function callBackend<T = any>(
-  path: string,
-  options: {
-    method?: 'GET' | 'POST' | 'PUT' | 'DELETE';
-    body?: any;
-    headers?: Record<string, string>;
-    timeout?: number;
-  } = {},
-): Promise<T> {
-  const apiBaseUrl = process.env.API_BASE_URL;
-  const apiSecret = process.env.API_SECRET;
-
-  if (!apiBaseUrl) {
-    throw new Error('API_BASE_URL is not defined');
-  }
-
-  if (!apiSecret) {
-    throw new Error('API_SECRET is not defined');
-  }
-
-  const { method = 'GET', body, headers = {}, timeout = 30000 } = options;
-
-  // Create abort controller for timeout
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
-
+export async function saveChat({
+  id,
+  userId,
+  title,
+  visibility,
+}: {
+  id: string;
+  userId: string;
+  title: string;
+  visibility: VisibilityType;
+}) {
   try {
-    const url = `${apiBaseUrl}${path}`;
-    const fetchHeaders = new Headers(headers);
-    fetchHeaders.set('Authorization', `Bearer ${apiSecret}`);
-
-    if (body && !fetchHeaders.has('Content-Type')) {
-      fetchHeaders.set('Content-Type', 'application/json');
-    }
-
-    const response = await fetch(url, {
-      method,
-      headers: fetchHeaders,
-      body: body ? JSON.stringify(body) : undefined,
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeoutId);
-
-    if (!response.ok) {
-      throw new BackendError(
-        `API request failed with status ${response.status}`,
-        response.status,
-      );
-    }
-
-    // If response is expected to be JSON
-    if (response.headers.get('content-type')?.includes('application/json')) {
-      return (await response.json()) as T;
-    }
-
-    // For non-JSON responses (like streams), return the response directly
-    return response as unknown as T;
-  } catch (error: unknown) {
-    clearTimeout(timeoutId);
-
-    if (error instanceof Error && error.name === 'AbortError') {
-      throw new BackendError('Request timed out', 408);
-    }
-
-    // Re-throw backend errors
-    if (error instanceof BackendError) {
-      throw error;
-    }
-
-    // Handle other errors
-    throw new BackendError(
-      error instanceof Error ? error.message : 'Unknown error',
-      500,
-    );
-  }
-}
-
-/**
- * Generate a title using the backend
- */
-export async function generateTitleWithBackend(
-  message: string,
-): Promise<string> {
-  // In test environments, return a fixed title
-  if (isTestEnvironment) {
-    return generateTitleWithBackendMock(message);
-  }
-
-  // Real implementation for non-test environments
-  try {
-    const result = await callBackend<{ text: string }>('/api/generate_title', {
+    await callBackend(`/api/chats`, {
       method: 'POST',
-      body: { message },
+      body: {
+        id,
+        userId,
+        title,
+        visibility,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to save chat in backend');
+    throw error;
+  }
+}
+
+export async function deleteChatById({ id }: { id: string }) {
+  try {
+    await callBackend(`/api/chats/${id}`, {
+      method: 'DELETE',
     });
 
-    return result.text;
+    // Return undefined to match new behavior
+    return undefined;
   } catch (error) {
-    console.error('Error generating title with backend:', error);
-    // Fallback to a generic title
-    return 'New conversation';
+    console.error('Failed to delete chat by id from backend');
+    throw error;
+  }
+}
+
+export async function getChatById({ id }: { id: string }) {
+  try {
+    const response = await callBackend<Chat>(`/api/chats/${id}`, {
+      method: 'GET',
+    });
+
+    // Parse and validate the response
+    const chat = chatSchema.parse(response);
+
+    return chat;
+  } catch (error: any) {
+    if (error.status === 404) {
+      // Return undefined when chat not found to match existing behavior
+      return undefined;
+    }
+    console.error('Failed to get chat by id from backend');
+    throw error;
+  }
+}
+
+export async function updateChatVisiblityById({
+  chatId,
+  visibility,
+}: {
+  chatId: string;
+  visibility: 'private' | 'public';
+}) {
+  try {
+    await callBackend(`/api/chats/${chatId}/visibility`, {
+      method: 'PATCH',
+      body: { visibility },
+    });
+  } catch (error) {
+    console.error('Failed to update chat visibility in backend');
+    throw error;
+  }
+}
+
+export async function saveMessages({
+  messages,
+}: {
+  messages: Array<DBMessage>;
+}) {
+  try {
+    // Extract userId from the first message's chatId lookup
+    // In the actual implementation, we might need to get this from session or pass it
+    // For now, we'll need to modify this function signature later if needed
+    const chatId = messages[0]?.chatId;
+    if (!chatId) {
+      throw new Error('No messages provided');
+    }
+
+    // Get the chat to find userId
+    const chat = await getChatById({ id: chatId });
+    if (!chat) {
+      throw new Error('Chat not found');
+    }
+
+    await callBackend(`/api/chats/${chatId}/messages`, {
+      method: 'POST',
+      body: {
+        userId: chat.userId,
+        messages,
+      },
+    });
+  } catch (error) {
+    console.error('Failed to save messages in backend', error);
+    throw error;
+  }
+}
+
+export async function getMessagesByChatId({ id }: { id: string }) {
+  try {
+    const response = await callBackend<DBMessage[]>(
+      `/api/chats/${id}/messages`,
+      {
+        method: 'GET',
+      },
+    );
+
+    // Parse and validate each message
+    const messages = response.map((msg) => messageSchema.parse(msg));
+
+    return messages;
+  } catch (error) {
+    console.error('Failed to get messages by chat id from backend', error);
+    throw error;
+  }
+}
+
+export async function voteMessage({
+  chatId,
+  messageId,
+  type,
+}: {
+  chatId: string;
+  messageId: string;
+  type: 'up' | 'down';
+}) {
+  try {
+    await callBackend(`/api/chats/${chatId}/messages/${messageId}/vote`, {
+      method: 'POST',
+      body: { voteType: type },
+    });
+
+    // Return void as the result is not used
+    return undefined;
+  } catch (error) {
+    console.error('Failed to upvote message in backend', error);
+    throw error;
+  }
+}
+
+export async function getVotesByChatId({ id }: { id: string }) {
+  try {
+    const response = await callBackend<any[]>(`/api/chats/${id}/votes`, {
+      method: 'GET',
+    });
+
+    // Parse and validate each vote
+    const votes = response.map((vote) => voteSchema.parse(vote));
+
+    return votes;
+  } catch (error) {
+    console.error('Failed to get votes by chat id from backend', error);
+    throw error;
+  }
+}
+
+export async function getMessageById({ id }: { id: string }) {
+  try {
+    const response = await callBackend<DBMessage>(`/api/messages/${id}`, {
+      method: 'GET',
+    });
+
+    // Parse and validate the response
+    const message = messageSchema.parse(response);
+
+    // Return as array to match existing interface
+    return [message];
+  } catch (error: any) {
+    if (error.status === 404) {
+      // Return empty array when message not found to match existing behavior
+      return [];
+    }
+    console.error('Failed to get message by id from backend');
+    throw error;
+  }
+}
+
+export async function deleteMessagesByChatIdAfterTimestamp({
+  chatId,
+  timestamp,
+}: {
+  chatId: string;
+  timestamp: Date;
+}) {
+  try {
+    const params = new URLSearchParams();
+    params.set('timestamp', timestamp.toISOString());
+
+    await callBackend(`/api/chats/${chatId}/messages?${params.toString()}`, {
+      method: 'DELETE',
+    });
+  } catch (error) {
+    console.error(
+      'Failed to delete messages by id after timestamp from backend',
+    );
+    throw error;
+  }
+}
+
+export async function createStreamId({
+  streamId,
+  chatId,
+}: {
+  streamId: string;
+  chatId: string;
+}) {
+  try {
+    await callBackend(`/api/chats/${chatId}/streams`, {
+      method: 'POST',
+      body: { streamId },
+    });
+  } catch (error) {
+    console.error('Failed to create stream id in backend');
+    throw error;
+  }
+}
+
+export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
+  try {
+    const response = await callBackend<any>(`/api/chats/${chatId}/streams`, {
+      method: 'GET',
+    });
+
+    // Parse and validate the response
+    const validated = streamIdsResponseSchema.parse(response);
+
+    // Return just the array to match existing interface
+    return validated.streamIds;
+  } catch (error) {
+    console.error('Failed to get stream ids by chat id from backend');
+    throw error;
   }
 }
 
 /**
- * Stream text from the backend chat API
- * Returns an object with methods to consume and merge the stream, similar to streamText
+ * Stream chat response from the backend API
+ * This is the renamed streamFromBackend function
  */
-export async function streamFromBackend(params: {
+export async function streamChatResponse(params: {
   messages: any[];
   userId: string;
+  userType: string;
   chatId: string;
   onFinish?: ({ response }: { response: any }) => Promise<void>;
 }): Promise<{
@@ -157,8 +280,8 @@ export async function streamFromBackend(params: {
     return streamFromBackendMock(params);
   }
 
-  // Extract the onFinish callback and pass the rest to the backend
-  const { onFinish, ...otherParams } = params;
+  // Extract the onFinish callback and other params
+  const { onFinish, chatId, ...otherParams } = params;
 
   // Extract content from messages, removing parts
   const simplifiedMessages = params.messages.map((message) => {
@@ -172,13 +295,16 @@ export async function streamFromBackend(params: {
   });
 
   // Real backend API call
-  const response = await callBackend<Response>('/api/chat', {
-    method: 'POST',
-    body: {
-      ...otherParams,
-      messages: simplifiedMessages,
+  const response = await callBackend<Response>(
+    `/api/chats/${chatId}/responses`,
+    {
+      method: 'POST',
+      body: {
+        ...otherParams,
+        messages: simplifiedMessages,
+      },
     },
-  });
+  );
 
   if (!response.body) {
     throw new Error('No response body available');

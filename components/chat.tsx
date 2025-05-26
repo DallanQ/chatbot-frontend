@@ -5,7 +5,7 @@ import { useChat } from '@ai-sdk/react';
 import { useEffect, useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { ChatHeader } from '@/components/chat-header';
-import type { Vote } from '@/lib/db/schema';
+import type { Vote } from '@/lib/api/chat-schemas';
 import { fetcher, generateUUID } from '@/lib/utils';
 import { MultimodalInput } from './multimodal-input';
 import { Messages } from './messages';

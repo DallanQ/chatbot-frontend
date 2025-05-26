@@ -1,6 +1,6 @@
 import { auth } from '@/app/(auth)/auth';
 import type { NextRequest } from 'next/server';
-import { getChatsByUserId } from '@/lib/db/queries';
+import { getChatsByUserId } from '@/lib/api/users';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = request.nextUrl;

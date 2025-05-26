@@ -45,6 +45,7 @@ export async function generateTitleWithBackendMock(
 export async function streamFromBackendMock(params: {
   messages: any[];
   userId: string;
+  userType: string;
   chatId: string;
   onFinish?: ({ response }: { response: any }) => Promise<void>;
 }) {

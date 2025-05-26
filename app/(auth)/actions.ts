@@ -1,7 +1,7 @@
 'use server';
 
 import { z } from 'zod';
-import { createUser, getUser } from '@/lib/db/queries';
+import { createUser, getUser } from '@/lib/api/users';
 import { signIn } from './auth';
 import { isTestEnvironment } from '@/lib/constants';
 

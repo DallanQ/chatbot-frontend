@@ -6,9 +6,9 @@ import {
   deleteMessagesByChatIdAfterTimestamp,
   getMessageById,
   updateChatVisiblityById,
-} from '@/lib/db/queries';
+} from '@/lib/api/chats';
 import type { VisibilityType } from '@/components/visibility-selector';
-import { generateTitleWithBackend } from '@/lib/api/backend';
+import { generateTitle } from '@/lib/api/titles';
 
 export async function saveChatModelAsCookie(model: string) {
   const cookieStore = await cookies();
@@ -21,12 +21,14 @@ export async function generateTitleFromUserMessage({
   message: UIMessage;
 }) {
   try {
-    // Extract the message content
-    const messageContent = message.parts[0] || '';
+    // Extract the message content from the first part
+    const firstPart = message.parts[0];
+    const messageContent =
+      firstPart && 'text' in firstPart ? firstPart.text : '';
 
     // Use our backend integration to generate the title
-    const title = await generateTitleWithBackend(messageContent);
-    console.log('generateTitleWithBackend:', title);
+    const title = await generateTitle(messageContent);
+    console.log('generateTitle:', message, title);
 
     return title;
   } catch (error) {

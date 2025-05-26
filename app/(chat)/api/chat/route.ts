@@ -9,12 +9,13 @@ import {
   createStreamId,
   deleteChatById,
   getChatById,
-  getMessageCountByUserId,
   getMessagesByChatId,
   getStreamIdsByChatId,
   saveChat,
   saveMessages,
-} from '@/lib/db/queries';
+  streamChatResponse,
+} from '@/lib/api/chats';
+import { getMessageCountByUserId } from '@/lib/api/users';
 import { generateUUID, getTrailingMessageId } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
 import { postRequestBodySchema, type PostRequestBody } from './schema';
@@ -24,9 +25,8 @@ import {
   type ResumableStreamContext,
 } from 'resumable-stream';
 import { after } from 'next/server';
-import type { Chat } from '@/lib/db/schema';
+import type { Chat } from '@/lib/api/chat-schemas';
 import { differenceInSeconds } from 'date-fns';
-import { streamFromBackend } from '@/lib/api/backend';
 
 export const maxDuration = 60;
 
@@ -144,7 +144,7 @@ export async function POST(request: Request) {
     const stream = createDataStream({
       execute: async (dataStream) => {
         // Create the stream from backend
-        const result = await streamFromBackend({
+        const result = await streamChatResponse({
           messages,
           userId: session.user.id,
           userType: session.user.type,
@@ -325,13 +325,17 @@ export async function DELETE(request: Request) {
   try {
     const chat = await getChatById({ id });
 
+    if (!chat) {
+      return new Response('Not Found', { status: 404 });
+    }
+
     if (chat.userId !== session.user.id) {
       return new Response('Forbidden', { status: 403 });
     }
 
-    const deletedChat = await deleteChatById({ id });
+    await deleteChatById({ id });
 
-    return Response.json(deletedChat, { status: 200 });
+    return new Response(null, { status: 204 });
   } catch (error) {
     console.error(error);
     return new Response('An error occurred while processing your request!', {
