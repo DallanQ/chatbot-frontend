@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { isTestEnvironment } from './constants';
+import { isTestEnvironment } from './config/constants';
 
 /**
  * Logs a message to a file when in test environment

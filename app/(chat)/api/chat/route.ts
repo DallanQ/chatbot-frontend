@@ -4,7 +4,6 @@ import {
   createDataStream,
 } from 'ai';
 import { auth, type UserType } from '@/app/(auth)/auth';
-import type { RequestHints } from '@/lib/ai/prompts';
 import {
   createStreamId,
   deleteChatById,
@@ -25,8 +24,9 @@ import {
   type ResumableStreamContext,
 } from 'resumable-stream';
 import { after } from 'next/server';
-import type { Chat } from '@/lib/api/chat-schemas';
+import type { Chat } from '@/lib/models/chat';
 import { differenceInSeconds } from 'date-fns';
+import { entitlementsByUserType } from '@/lib/config/entitlements';
 
 export const maxDuration = 60;
 
@@ -79,14 +79,14 @@ export async function POST(request: Request) {
       differenceInHours: 24,
     });
 
-    // if (messageCount > entitlementsByUserType[userType].maxMessagesPerDay) {
-    //   return new Response(
-    //     'You have exceeded your maximum number of messages for the day! Please try again later.',
-    //     {
-    //       status: 429,
-    //     },
-    //   );
-    // }
+    if (messageCount > entitlementsByUserType[userType].maxMessagesPerDay) {
+      return new Response(
+        'You have exceeded your maximum number of messages for the day! Please try again later.',
+        {
+          status: 429,
+        },
+      );
+    }
 
     const chat = await getChatById({ id });
 
@@ -115,14 +115,8 @@ export async function POST(request: Request) {
       message,
     });
 
-    const { longitude, latitude, city, country } = geolocation(request);
-
-    const requestHints: RequestHints = {
-      longitude,
-      latitude,
-      city,
-      country,
-    };
+    // Geolocation data is available but not currently used
+    // const { longitude, latitude, city, country } = geolocation(request);
 
     await saveMessages({
       messages: [
@@ -138,7 +132,7 @@ export async function POST(request: Request) {
     });
 
     const streamId = generateUUID();
-    await createStreamId({ streamId, chatId: id });
+    await createStreamId({ id: streamId, chatId: id });
 
     // Create data stream that uses our backend integration
     const stream = createDataStream({
@@ -173,7 +167,19 @@ export async function POST(request: Request) {
                       id: assistantId,
                       chatId: id,
                       role: assistantMessage.role,
-                      parts: assistantMessage.parts,
+                      parts: assistantMessage.parts 
+                        ? assistantMessage.parts
+                            .filter((part: any) => part.type === 'text')  // we only handle text parts
+                            .map((part: any) => ({
+                              type: 'text' as const,
+                              text: part.text,
+                            }))
+                        : [
+                            {
+                              type: 'text' as const,
+                              text: assistantMessage.content,  // old format
+                            },
+                          ],
                       attachments: [],
                       createdAt: new Date(),
                     },
@@ -234,7 +240,7 @@ export async function GET(request: Request) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  let chat: Chat;
+  let chat: Chat | undefined;
 
   try {
     chat = await getChatById({ id: chatId });

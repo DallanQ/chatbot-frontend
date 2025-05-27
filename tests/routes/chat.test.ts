@@ -25,7 +25,7 @@ test.describe
         data: {
           id: chatId,
           message: TEST_PROMPTS.SKY.MESSAGE,
-          selectedChatModel: 'chat-model',
+          selectedChatModel: 'default-model',
           selectedVisibilityType: 'private',
         },
       });
@@ -49,7 +49,7 @@ test.describe
         data: {
           id: chatId,
           message: TEST_PROMPTS.GRASS.MESSAGE,
-          selectedChatModel: 'chat-model',
+          selectedChatModel: 'default-model',
           selectedVisibilityType: 'private',
         },
       });
@@ -77,10 +77,7 @@ test.describe
       const response = await adaContext.request.delete(
         `/api/chat?id=${chatId}`,
       );
-      expect(response.status()).toBe(200);
-
-      const deletedChat = await response.json();
-      expect(deletedChat).toMatchObject({ id: chatId });
+      expect(response.status()).toBe(204);
     });
 
     test('Ada cannot resume stream of chat that does not exist', async ({
@@ -100,8 +97,7 @@ test.describe
           id: chatId,
           message: {
             id: generateUUID(),
-            role: 'user',
-            content: 'Help me write an essay about Silcon Valley',
+            role: 'user' as const,
             parts: [
               {
                 type: 'text',
@@ -110,7 +106,7 @@ test.describe
             ],
             createdAt: new Date().toISOString(),
           },
-          selectedChatModel: 'chat-model',
+          selectedChatModel: 'default-model',
           selectedVisibilityType: 'private',
         },
       });
@@ -168,8 +164,7 @@ test.describe
           id: chatId,
           message: {
             id: generateUUID(),
-            role: 'user',
-            content: 'Help me write an essay about Silcon Valley',
+            role: 'user' as const,
             parts: [
               {
                 type: 'text',
@@ -178,7 +173,7 @@ test.describe
             ],
             createdAt: new Date().toISOString(),
           },
-          selectedChatModel: 'chat-model',
+          selectedChatModel: 'default-model',
           selectedVisibilityType: 'private',
         },
       });
@@ -208,6 +203,7 @@ test.describe
       expect(secondResponseContent).toContain('append-message');
     });
 
+    test.setTimeout(60000);
     test('Ada cannot resume chat generation that has ended', async ({
       adaContext,
     }) => {
@@ -218,8 +214,7 @@ test.describe
           id: chatId,
           message: {
             id: generateUUID(),
-            role: 'user',
-            content: 'Help me write an essay about Silcon Valley',
+            role: 'user' as const,
             parts: [
               {
                 type: 'text',
@@ -228,7 +223,7 @@ test.describe
             ],
             createdAt: new Date().toISOString(),
           },
-          selectedChatModel: 'chat-model',
+          selectedChatModel: 'default-model',
           selectedVisibilityType: 'private',
         },
       });
@@ -237,8 +232,7 @@ test.describe
       expect(firstStatusCode).toBe(200);
 
       await firstResponse.text();
-      await new Promise((resolve) => setTimeout(resolve, 15 * 1000));
-      await new Promise((resolve) => setTimeout(resolve, 15000));
+      await new Promise((resolve) => setTimeout(resolve, 16000));
       const secondResponse = await adaContext.request.get(
         `/api/chat?chatId=${chatId}`,
       );
@@ -261,8 +255,7 @@ test.describe
           id: chatId,
           message: {
             id: generateUUID(),
-            role: 'user',
-            content: 'Help me write an essay about Silcon Valley',
+            role: 'user' as const,
             parts: [
               {
                 type: 'text',
@@ -271,7 +264,7 @@ test.describe
             ],
             createdAt: new Date().toISOString(),
           },
-          selectedChatModel: 'chat-model',
+          selectedChatModel: 'default-model',
           selectedVisibilityType: 'private',
         },
       });
@@ -307,8 +300,7 @@ test.describe
           id: chatId,
           message: {
             id: generateUUID(),
-            role: 'user',
-            content: 'Help me write an essay about Silicon Valley',
+            role: 'user' as const,
             parts: [
               {
                 type: 'text',
@@ -317,7 +309,7 @@ test.describe
             ],
             createdAt: new Date().toISOString(),
           },
-          selectedChatModel: 'chat-model',
+          selectedChatModel: 'default-model',
           selectedVisibilityType: 'public',
         },
       });

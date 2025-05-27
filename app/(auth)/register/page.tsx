@@ -8,7 +8,7 @@ import { AuthForm } from '@/components/auth-form';
 import { SubmitButton } from '@/components/submit-button';
 import { toast } from '@/components/toast';
 import { register, type RegisterActionState } from '../actions';
-import { isTestEnvironment } from '@/lib/constants';
+import { isTestEnvironment } from '@/lib/config/constants';
 
 export default function Page() {
   const router = useRouter();

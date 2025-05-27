@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import type { UIMessage } from 'ai';
 import type { UseChatHelpers } from '@ai-sdk/react';
-import type { DataPart } from '@/lib/types';
+type DataPart = { type: 'append-message'; message: string };
 
 export interface UseAutoResumeParams {
   autoResume: boolean;

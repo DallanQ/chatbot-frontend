@@ -1,7 +1,7 @@
 import 'server-only';
-import { isTestEnvironment } from '@/lib/constants';
+import { isTestEnvironment } from '@/lib/config/constants';
 import { callBackend } from './utils';
-import { titleGenerateResponseSchema } from './title-schemas';
+import { titleGenerateResponseSchema } from '@/lib/models/title';
 import { generateTitleWithBackendMock } from './chat-mocks';
 
 /**

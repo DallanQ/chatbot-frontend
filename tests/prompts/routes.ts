@@ -5,8 +5,7 @@ export const TEST_PROMPTS = {
     MESSAGE: {
       id: generateUUID(),
       createdAt: new Date().toISOString(),
-      role: 'user',
-      content: 'Why is the sky blue?',
+      role: 'user' as const,
       parts: [{ type: 'text', text: 'Why is the sky blue?' }],
     },
     OUTPUT_STREAM: [
@@ -22,8 +21,7 @@ export const TEST_PROMPTS = {
     MESSAGE: {
       id: generateUUID(),
       createdAt: new Date().toISOString(),
-      role: 'user',
-      content: 'Why is grass green?',
+      role: 'user' as const,
       parts: [{ type: 'text', text: 'Why is grass green?' }],
     },
 

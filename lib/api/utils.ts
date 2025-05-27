@@ -82,6 +82,11 @@ export async function callBackend<T = any>(
       );
     }
 
+    // Handle 204 No Content responses
+    if (response.status === 204) {
+      return undefined as unknown as T;
+    }
+
     // If response is expected to be JSON
     if (response.headers.get('content-type')?.includes('application/json')) {
       return (await response.json()) as T;

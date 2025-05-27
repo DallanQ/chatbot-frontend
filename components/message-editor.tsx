@@ -28,7 +28,9 @@ export function MessageEditor({
 }: MessageEditorProps) {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const [draftContent, setDraftContent] = useState<string>(message.content);
+  const [draftContent, setDraftContent] = useState<string>(
+    message.content || message.parts?.[0]?.text || ''
+  );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -88,7 +90,6 @@ export function MessageEditor({
               if (index !== -1) {
                 const updatedMessage = {
                   ...message,
-                  content: draftContent,
                   parts: [{ type: 'text', text: draftContent }],
                 };
 

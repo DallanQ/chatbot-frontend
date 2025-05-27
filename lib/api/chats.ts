@@ -1,6 +1,6 @@
 import 'server-only';
 import type { DataStreamWriter } from 'ai';
-import { isTestEnvironment } from '@/lib/constants';
+import { isTestEnvironment } from '@/lib/config/constants';
 import { callBackend, BackendError } from './utils';
 import {
   type Chat,
@@ -9,7 +9,7 @@ import {
   messageSchema,
   voteSchema,
   streamIdsResponseSchema,
-} from './chat-schemas';
+} from '@/lib/models/chat';
 import type { VisibilityType } from '@/components/visibility-selector';
 import { streamFromBackendMock } from './chat-mocks';
 
@@ -227,16 +227,16 @@ export async function deleteMessagesByChatIdAfterTimestamp({
 }
 
 export async function createStreamId({
-  streamId,
+  id,
   chatId,
 }: {
-  streamId: string;
+  id: string;
   chatId: string;
 }) {
   try {
     await callBackend(`/api/chats/${chatId}/streams`, {
       method: 'POST',
-      body: { streamId },
+      body: { id },
     });
   } catch (error) {
     console.error('Failed to create stream id in backend');
@@ -254,7 +254,7 @@ export async function getStreamIdsByChatId({ chatId }: { chatId: string }) {
     const validated = streamIdsResponseSchema.parse(response);
 
     // Return just the array to match existing interface
-    return validated.streamIds;
+    return validated.ids;
   } catch (error) {
     console.error('Failed to get stream ids by chat id from backend');
     throw error;

@@ -44,9 +44,9 @@ export default defineConfig({
   },
 
   /* Configure global timeout for each test */
-  timeout: 120 * 1000, // 120 seconds
+  timeout: 30 * 1000, // 30 seconds
   expect: {
-    timeout: 120 * 1000,
+    timeout: 5 * 1000, // 5 seconds for assertions
   },
 
   /* Configure projects */
@@ -99,7 +99,7 @@ export default defineConfig({
 
   /* Run your local dev server before starting the tests */
   webServer: {
-    command: 'pnpm dev',
+    command: 'PLAYWRIGHT=True NEXT_PUBLIC_PLAYWRIGHT=True pnpm dev',
     url: `${baseURL}/ping`,
     timeout: 120 * 1000,
     reuseExistingServer: !process.env.CI,

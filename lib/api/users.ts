@@ -1,11 +1,11 @@
 import 'server-only';
-import { callBackend } from './utils';
+import { callBackend, generateHashedPassword } from './utils';
 import {
   type User,
   userSchema,
   messageCountResponseSchema,
-} from './user-schemas';
-import { chatsResponseSchema } from './chat-schemas';
+} from '@/lib/models/user';
+import { chatsResponseSchema } from '@/lib/models/chat';
 
 export async function getUser(email: string): Promise<Array<User>> {
   try {
@@ -33,9 +33,10 @@ export async function getUser(email: string): Promise<Array<User>> {
 
 export async function createUser(email: string, password: string) {
   try {
+    const passwordHash = generateHashedPassword(password);
     await callBackend(`/api/users`, {
       method: 'POST',
-      body: { email, passwordHash: password },
+      body: { email, passwordHash },
     });
   } catch (error) {
     console.error('Failed to create user in backend');

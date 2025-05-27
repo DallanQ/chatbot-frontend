@@ -3,7 +3,7 @@
 import { z } from 'zod';
 import { createUser, getUser } from '@/lib/api/users';
 import { signIn } from './auth';
-import { isTestEnvironment } from '@/lib/constants';
+import { isTestEnvironment } from '@/lib/config/constants';
 
 // Email/password authentication is conditionally enabled based on environment
 // Available in test environments, disabled in production

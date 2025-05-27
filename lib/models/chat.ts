@@ -35,7 +35,7 @@ export const updateChatVisibilityRequestSchema = z.object({
 });
 
 // Message role schema
-export const messageRoleSchema = z.enum(['user', 'assistant', 'system']);
+export const messageRoleSchema = z.enum(['user', 'assistant', 'system', 'data']);
 
 // Message schema - matches the backend Message model (v2 format)
 export const messageSchema = z.object({
@@ -88,12 +88,12 @@ export const streamSchema = z.object({
 
 // Schema for create stream request
 export const createStreamRequestSchema = z.object({
-  streamId: z.string().uuid(),
+  id: z.string().uuid(),
 });
 
-// Schema for stream IDs response - backend returns object with streamIds array
+// Schema for stream IDs response - backend returns object with ids array
 export const streamIdsResponseSchema = z.object({
-  streamIds: z.array(z.string().uuid()),
+  ids: z.array(z.string().uuid()),
 });
 
 // Schema for chat stream request

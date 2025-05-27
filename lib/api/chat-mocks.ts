@@ -62,12 +62,15 @@ export async function streamFromBackendMock(params: {
   // Get the last message - this is what we're responding to
   const lastMessage = params.messages[params.messages.length - 1];
 
+  // Extract content from either content field (legacy) or parts (modern)
+  const messageText = lastMessage.content || lastMessage.parts?.[0]?.text || '';
+  
   // Get predefined response chunks for this prompt
   const responseChunks = testUtils.getResponseChunksByPrompt(
     [
       {
         role: lastMessage.role,
-        content: [{ type: 'text', text: lastMessage.content }],
+        content: [{ type: 'text', text: messageText }],
       },
     ],
     false,

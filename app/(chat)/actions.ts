@@ -12,7 +12,7 @@ import { generateTitle } from '@/lib/api/titles';
 
 export async function saveChatModelAsCookie(model: string) {
   const cookieStore = await cookies();
-  cookieStore.set('chat-model', model);
+  cookieStore.set('default-model', model);
 }
 
 export async function generateTitleFromUserMessage({
