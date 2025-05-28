@@ -8,9 +8,8 @@ import {
   getOrCreateUserFromOAuth,
 } from '@/lib/api/users';
 import { authConfig } from './auth.config';
-import { isTestEnvironment } from '@/lib/config/constants';
 import type { DefaultJWT } from 'next-auth/jwt';
-
+import { isTestEnvironment } from '@/lib/config/constants';
 export type UserType = 'guest' | 'regular';
 
 declare module 'next-auth' {

@@ -112,6 +112,9 @@ test.describe
     });
 
     test('Log into account that exists', async ({ page }) => {
+      // Ensure the user exists by registering first
+      await authPage.register(testUser.email, testUser.password);
+
       await authPage.login(testUser.email, testUser.password);
 
       await page.waitForURL('/');

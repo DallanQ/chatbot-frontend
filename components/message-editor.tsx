@@ -29,7 +29,7 @@ export function MessageEditor({
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
   const [draftContent, setDraftContent] = useState<string>(
-    message.content || message.parts?.[0]?.text || ''
+    message.content || message.parts?.[0]?.text || '',
   );
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 

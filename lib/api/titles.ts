@@ -1,24 +1,17 @@
 import 'server-only';
-import { isTestEnvironment } from '@/lib/config/constants';
 import { callBackend } from './utils';
 import { titleGenerateResponseSchema } from '@/lib/models/title';
-import { generateTitleWithBackendMock } from './chat-mocks';
 
 /**
  * Generate a title using the backend
  * This is the renamed generateTitleWithBackend function
  */
-export async function generateTitle(message: string): Promise<string> {
-  // In test environments, return a fixed title
-  if (isTestEnvironment) {
-    return generateTitleWithBackendMock(message);
-  }
-
+export async function generateTitle(text: string): Promise<string> {
   // Real implementation for non-test environments
   try {
     const result = await callBackend<any>('/api/titles/generate', {
       method: 'POST',
-      body: { message },
+      body: { text },
     });
 
     // Parse and validate the response

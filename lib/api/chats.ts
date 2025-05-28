@@ -1,6 +1,5 @@
 import 'server-only';
 import type { DataStreamWriter } from 'ai';
-import { isTestEnvironment } from '@/lib/config/constants';
 import { callBackend, BackendError } from './utils';
 import {
   type Chat,
@@ -11,7 +10,6 @@ import {
   streamIdsResponseSchema,
 } from '@/lib/models/chat';
 import type { VisibilityType } from '@/components/visibility-selector';
-import { streamFromBackendMock } from './chat-mocks';
 
 export async function saveChat({
   id,
@@ -275,11 +273,6 @@ export async function streamChatResponse(params: {
   consumeStream: () => void;
   mergeIntoDataStream: (dataStream: DataStreamWriter, options?: any) => void;
 }> {
-  // Check if we're in a test environment - if so, use mock implementation
-  if (isTestEnvironment) {
-    return streamFromBackendMock(params);
-  }
-
   // Extract the onFinish callback and other params
   const { onFinish, chatId, ...otherParams } = params;
 

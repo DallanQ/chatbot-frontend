@@ -146,9 +146,8 @@ export class ChatPage {
         await page.getByTestId('message-edit-button').click();
         await page.getByTestId('message-editor').fill(newMessage);
         await page.getByTestId('message-editor-send-button').click();
-        await expect(
-          page.getByTestId('message-editor-send-button'),
-        ).not.toBeVisible();
+        // Wait for the generation to complete (stop button turns back to send button)
+        await expect(page.getByTestId('send-button')).toBeVisible();
       },
     };
   }

@@ -22,9 +22,11 @@ install: ## Install dependencies
 	pnpm install
 
 # Development Commands
-run: ## Run the client in development mode (alias for dev)
+run: ## Run the client in development mode
 	@echo -e "$(COLOR_BOLD)Starting development server...$(COLOR_RESET)"
 	pnpm run dev
+
+dev: run ## Alias for run command
 
 # Code Quality Commands
 lint: ## Run linting
@@ -55,7 +57,7 @@ test-all: ## Run all tests
 	@echo -e "$(COLOR_BOLD)Running all tests...$(COLOR_RESET)"
 	@echo -e "$(COLOR_BOLD)Checking for existing servers on port 3000...$(COLOR_RESET)"
 	@node scripts/kill-port-3000.js
-	PLAYWRIGHT=True NEXT_PUBLIC_PLAYWRIGHT=True pnpm exec playwright test --reporter=dot
+	pnpm exec playwright test --reporter=dot
 
 test-ui: ## Launch Playwright UI for interactive test debugging
 	@echo -e "$(COLOR_BOLD)Launching Playwright UI...$(COLOR_RESET)"

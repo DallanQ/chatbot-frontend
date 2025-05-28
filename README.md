@@ -69,11 +69,42 @@ You will need to use the environment variables [defined in `.env.example`](.env.
 3. Download your environment variables: `vercel env pull`
 
 ```bash
-pnpm install
-pnpm dev
+make install
+make dev
 ```
 
 Your app template should now be running on [localhost:3000](http://localhost:3000).
+
+## Testing
+
+This application uses Playwright for end-to-end testing. **Important:** Since the frontend now integrates with a custom backend API, you must have the backend running before running tests.
+
+### Prerequisites
+
+1. **Backend Setup**: Ensure your custom backend is running with these commands:
+   ```bash
+   # In your backend directory:
+   make dev
+   ```
+
+2. **Frontend Test Setup** (one-time):
+   ```bash
+   make setup-tests
+   ```
+
+### Running Tests
+
+```bash
+# Run all tests
+make test-all
+
+# Run tests with UI
+make test-ui
+```
+
+### Troubleshooting Tests
+
+- If the "Ada can resume chat generation..." tests fail intermittently, you may need to increase the `SECOND_REQUEST_DELAY` constant in `/tests/routes/chat.test.ts`. This delay ensures the second request arrives while the first request is actively streaming.
 
 ## Backend Integration
 

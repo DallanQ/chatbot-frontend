@@ -35,7 +35,12 @@ export const updateChatVisibilityRequestSchema = z.object({
 });
 
 // Message role schema
-export const messageRoleSchema = z.enum(['user', 'assistant', 'system', 'data']);
+export const messageRoleSchema = z.enum([
+  'user',
+  'assistant',
+  'system',
+  'data',
+]);
 
 // Message schema - matches the backend Message model (v2 format)
 export const messageSchema = z.object({

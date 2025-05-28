@@ -296,7 +296,7 @@ function PureMultimodalInput({
       </div> */}
 
       <div className="absolute bottom-0 right-0 p-2 w-fit flex flex-row justify-end">
-        {status === 'submitted' ? (
+        {status === 'submitted' || status === 'streaming' ? (
           <StopButton stop={stop} setMessages={setMessages} />
         ) : (
           <SendButton
@@ -359,7 +359,7 @@ function PureStopButton({
     <Button
       data-testid="stop-button"
       className="rounded-full p-1.5 h-fit border dark:border-zinc-600"
-      onClick={(event) => {
+      onMouseDown={(event) => {
         event.preventDefault();
         stop();
         setMessages((messages) => messages);
