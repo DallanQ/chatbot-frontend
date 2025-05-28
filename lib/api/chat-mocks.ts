@@ -76,6 +76,9 @@ export async function streamFromBackendMock(params: {
     false,
   );
 
+  // Track if this stream has been cancelled
+  let isCancelled = false;
+
   return {
     consumeStream: () => {
       // Nothing to do here in mock version
@@ -136,22 +139,40 @@ export async function streamFromBackendMock(params: {
         // Create a ReadableStream from our chunks
         const mockStream = new ReadableStream({
           async start(controller) {
-            // Send all text chunks
-            for (const chunk of textChunks) {
-              // Add a short delay before sending each chunk
-              await new Promise((resolve) => setTimeout(resolve, 50));
-              controller.enqueue(chunk);
-            }
+            try {
+              // Send all text chunks
+              for (const chunk of textChunks) {
+                // Check if cancelled before sending each chunk
+                if (isCancelled) {
+                  console.log('[TEST-LOG] Mock stream cancelled, stopping chunk delivery');
+                  controller.close();
+                  return;
+                }
+                
+                // Add a short delay before sending each chunk
+                await new Promise((resolve) => setTimeout(resolve, 50));
+                controller.enqueue(chunk);
+              }
 
-            controller.close();
+              controller.close();
+            } catch (error) {
+              if (!isCancelled) {
+                controller.error(error);
+              }
+            }
           },
+          cancel() {
+            console.log('[TEST-LOG] Mock stream cancel() called');
+            isCancelled = true;
+          }
         });
 
         // Merge the mock stream into the data stream
         dataStream.merge(mockStream);
 
         // If onFinish callback is provided, call it with the collected response
-        if (params.onFinish) {
+        // But only if the stream wasn't cancelled
+        if (params.onFinish && !isCancelled) {
           const parts = [{ type: 'text', text: textParts.join('') || '' }];
           await params.onFinish({
             response: {

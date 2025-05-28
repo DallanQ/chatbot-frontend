@@ -1,10 +1,8 @@
-import fs from 'node:fs';
-import path from 'node:path';
 import { isTestEnvironment } from './config/constants';
 
 /**
- * Logs a message to a file when in test environment
- * This is useful for debugging tests since console logs might not be visible
+ * Logs a message when in test environment
+ * This is useful for debugging tests
  */
 export function logToTestFile(message: string | object) {
   if (!isTestEnvironment) return;
@@ -12,27 +10,20 @@ export function logToTestFile(message: string | object) {
   try {
     const logMessage =
       typeof message === 'object' ? JSON.stringify(message, null, 2) : message;
-
-    fs.appendFileSync(
-      path.join(process.cwd(), 'test-logs.txt'),
-      `${new Date().toISOString()} - ${logMessage}\n`,
-    );
+    
+    // Use console.log with a prefix for easy identification in test output
+    console.log(`[TEST-LOG] ${new Date().toISOString()} - ${logMessage}`);
   } catch (error) {
     // Silent fail - don't break tests if logging fails
-    console.error('Failed to write to test log file:', error);
+    console.error('Failed to log test message:', error);
   }
 }
 
 /**
- * Clears the test log file
+ * Clears the test log file (no-op for client-side version)
  * Useful at the beginning of test runs
  */
 export function clearTestLogs() {
   if (!isTestEnvironment) return;
-
-  try {
-    fs.writeFileSync(path.join(process.cwd(), 'test-logs.txt'), '');
-  } catch (error) {
-    console.error('Failed to clear test log file:', error);
-  }
+  console.log('[TEST-LOG] Test logs cleared');
 }

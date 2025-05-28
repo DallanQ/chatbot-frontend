@@ -283,17 +283,6 @@ export async function streamChatResponse(params: {
   // Extract the onFinish callback and other params
   const { onFinish, chatId, ...otherParams } = params;
 
-  // Extract content from messages, removing parts
-  const simplifiedMessages = params.messages.map((message) => {
-    // Ensure content field exists - might be in parts[0].text for some messages
-    const content = message.content || message.parts?.[0]?.text || '';
-
-    return {
-      role: message.role,
-      content: content,
-    };
-  });
-
   // Real backend API call
   const response = await callBackend<Response>(
     `/api/chats/${chatId}/responses`,
@@ -301,7 +290,6 @@ export async function streamChatResponse(params: {
       method: 'POST',
       body: {
         ...otherParams,
-        messages: simplifiedMessages,
       },
     },
   );
@@ -322,7 +310,6 @@ export async function streamChatResponse(params: {
         // Convert chunk to a string if needed
         const chunkStr =
           typeof chunk !== 'string' ? new TextDecoder().decode(chunk) : chunk;
-
         // Pass through the chunk as-is
         controller.enqueue(chunkStr);
 
