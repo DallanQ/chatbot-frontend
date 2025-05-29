@@ -38,16 +38,10 @@ declare module 'next-auth/jwt' {
 const getProviders = () => {
   const providers: any[] = [
     GoogleProvider({
-      clientId:
-        process.env.GOOGLE_CLIENT_ID ??
-        (() => {
-          throw new Error('GOOGLE_CLIENT_ID is required');
-        })(),
-      clientSecret:
-        process.env.GOOGLE_CLIENT_SECRET ??
-        (() => {
-          throw new Error('GOOGLE_CLIENT_SECRET is required');
-        })(),
+      // Client ID can be public - it's visible in the browser anyway
+      clientId: process.env.GOOGLE_CLIENT_ID || 'not-configured',
+      // Client secret is only used server-side
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'not-configured',
     }),
   ];
 

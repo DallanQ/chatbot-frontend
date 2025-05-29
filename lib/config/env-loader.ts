@@ -32,8 +32,6 @@ export async function loadEnvironmentVariables() {
       API_BASE_URL: 'API_BASE_URL',
       API_SECRET: 'API_SECRET',
       REDIS_URL: 'REDIS_URL',
-      GOOGLE_CLIENT_ID: 'GOOGLE_CLIENT_ID',
-      GOOGLE_CLIENT_SECRET: 'GOOGLE_CLIENT_SECRET',
     };
 
     // Load all secrets in parallel
