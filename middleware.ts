@@ -24,7 +24,22 @@ export async function middleware(request: NextRequest) {
   });
 
   if (!token) {
-    const redirectUrl = encodeURIComponent(request.url);
+    // Debug: Log URL construction values
+    console.log('[middleware] URL debug:');
+    console.log('[middleware] request.url:', request.url);
+    console.log('[middleware] request.nextUrl.host:', request.nextUrl.host);
+    console.log('[middleware] host header:', request.headers.get('host'));
+    console.log('[middleware] x-forwarded-proto:', request.headers.get('x-forwarded-proto'));
+    console.log('[middleware] protocol:', request.nextUrl.protocol);
+    
+    // Use the actual host from headers instead of request.url which shows localhost
+    const host = request.headers.get('host') || request.nextUrl.host;
+    const protocol = request.headers.get('x-forwarded-proto') || request.nextUrl.protocol.slice(0, -1);
+    const actualUrl = `${protocol}://${host}${request.nextUrl.pathname}${request.nextUrl.search}`;
+    const redirectUrl = encodeURIComponent(actualUrl);
+    
+    console.log('[middleware] constructed actualUrl:', actualUrl);
+    console.log('[middleware] encoded redirectUrl:', redirectUrl);
 
     return NextResponse.redirect(
       new URL(`/api/auth/guest?redirectUrl=${redirectUrl}`, request.url),
