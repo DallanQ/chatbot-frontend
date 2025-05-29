@@ -5,6 +5,8 @@ frontend:
       commands:
         - npm install -g pnpm
         - pnpm install
+        # Install AWS dependencies only on Amplify
+        - pnpm add @aws-amplify/backend
     build:
       commands:
         - pnpm run build
