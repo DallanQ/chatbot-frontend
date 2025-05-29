@@ -225,14 +225,12 @@ export async function GET(request: Request) {
   const streamContext = getStreamContext();
   const resumeRequestedAt = new Date();
 
-
   if (!streamContext) {
     return new Response(null, { status: 204 });
   }
 
   const { searchParams } = new URL(request.url);
   const chatId = searchParams.get('chatId');
-
 
   if (!chatId) {
     return new Response('id is required', { status: 400 });
@@ -266,7 +264,6 @@ export async function GET(request: Request) {
     return new Response('No streams found', { status: 404 });
   }
 
-
   const recentStreamId = streamIds.at(-1);
 
   if (!recentStreamId) {
@@ -281,7 +278,6 @@ export async function GET(request: Request) {
     recentStreamId,
     () => emptyDataStream,
   );
-
 
   /*
    * For when the generation is streaming during SSR

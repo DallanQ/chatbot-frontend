@@ -28,9 +28,12 @@ export function MessageEditor({
 }: MessageEditorProps) {
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
 
-  const [draftContent, setDraftContent] = useState<string>(
-    message.content || message.parts?.[0]?.text || '',
-  );
+  const [draftContent, setDraftContent] = useState<string>(() => {
+    if (typeof message.content === 'string') return message.content;
+    const firstPart = message.parts?.[0];
+    if (firstPart && 'text' in firstPart) return firstPart.text;
+    return '';
+  });
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {

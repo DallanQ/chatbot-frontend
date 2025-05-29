@@ -36,7 +36,7 @@ declare module 'next-auth/jwt' {
 
 // Build providers array conditionally based on environment
 const getProviders = () => {
-  const providers = [
+  const providers: any[] = [
     GoogleProvider({
       clientId:
         process.env.GOOGLE_CLIENT_ID ??
