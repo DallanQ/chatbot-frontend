@@ -8,8 +8,8 @@ frontend:
     build:
       commands:
         # Debug: Show available environment variables
-        - echo "AWS_BRANCH: $AWS_BRANCH"
-        - echo "AWS_APP_ID: $AWS_APP_ID"
+        - 'echo "AWS_BRANCH: $AWS_BRANCH"'
+        - 'echo "AWS_APP_ID: $AWS_APP_ID"'
         # Create .env.production with all required environment variables
         - echo "# Generated during build - DO NOT COMMIT" > .env.production
         - echo "NEXTAUTH_URL=https://$AWS_BRANCH.$AWS_APP_ID.amplifyapp.com" >> .env.production
@@ -20,8 +20,8 @@ frontend:
         - echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" >> .env.production
         - echo "GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET" >> .env.production
         # Debug: Show what was written to .env.production
-        - echo "Contents of .env.production:"
-        - cat .env.production | grep -E "NEXTAUTH_URL|AUTH_SECRET" | sed 's/=.*/=***/'
+        - 'echo "Contents of .env.production:"'
+        - 'cat .env.production | grep -E "NEXTAUTH_URL|AUTH_SECRET" | sed "s/=.*/=***/"'
         - pnpm run build
   artifacts:
     baseDirectory: .next
