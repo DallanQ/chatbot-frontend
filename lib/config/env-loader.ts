@@ -12,18 +12,20 @@ export async function loadEnvironmentVariables() {
 
   try {
     // First check if we can resolve the module
-    let amplifyBackend;
+    let amplifyBackend: any;
     try {
       // @ts-expect-error - This module is only available when deployed to AWS Amplify
       // eslint-disable-next-line import/no-unresolved
       amplifyBackend = await import('@aws-amplify/backend');
     } catch (error) {
-      console.log('AWS Amplify backend package not installed - skipping secret loading');
+      console.log(
+        'AWS Amplify backend package not installed - skipping secret loading',
+      );
       return;
     }
-    
+
     const { secret } = amplifyBackend;
-    
+
     // Define the secrets we need to load
     const secrets = {
       AUTH_SECRET: 'AUTH_SECRET',
@@ -35,26 +37,30 @@ export async function loadEnvironmentVariables() {
     };
 
     // Load all secrets in parallel
-    const secretPromises = Object.entries(secrets).map(async ([envVar, secretKey]) => {
-      if (!process.env[envVar]) {
-        try {
-          // The secret function handles the path format internally
-          const value = await secret(secretKey);
-          if (value) {
-            process.env[envVar] = value;
+    const secretPromises = Object.entries(secrets).map(
+      async ([envVar, secretKey]) => {
+        if (!process.env[envVar]) {
+          try {
+            // The secret function handles the path format internally
+            const value = await secret(secretKey);
+            if (value) {
+              process.env[envVar] = value;
+            }
+          } catch (error) {
+            console.warn(`Failed to load secret ${secretKey}:`, error);
           }
-        } catch (error) {
-          console.warn(`Failed to load secret ${secretKey}:`, error);
         }
-      }
-    });
+      },
+    );
 
     await Promise.all(secretPromises);
-    
+
     console.log('Environment variables loaded from AWS Parameter Store');
   } catch (error) {
     // If AWS dependencies aren't available or there's an error, fail silently
     // This allows the app to work on other platforms
-    console.log('Running outside AWS Amplify or unable to load AWS dependencies');
+    console.log(
+      'Running outside AWS Amplify or unable to load AWS dependencies',
+    );
   }
 }
