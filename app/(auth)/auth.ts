@@ -11,6 +11,12 @@ import { authConfig } from './auth.config';
 import type { DefaultJWT } from 'next-auth/jwt';
 import { isTestEnvironment } from '@/lib/config/constants';
 
+// Debug: Log environment variables at runtime
+console.log('[auth.ts] Runtime environment check:');
+console.log('[auth.ts] NEXTAUTH_URL:', process.env.NEXTAUTH_URL);
+console.log('[auth.ts] AUTH_SECRET:', process.env.AUTH_SECRET ? 'SET' : 'NOT SET');
+console.log('[auth.ts] NODE_ENV:', process.env.NODE_ENV);
+
 export type UserType = 'guest' | 'regular';
 
 declare module 'next-auth' {

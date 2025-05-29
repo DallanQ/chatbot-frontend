@@ -10,4 +10,6 @@ export const authConfig = {
     // while this file is also used in non-Node.js environments
   ],
   callbacks: {},
+  // Debug: Log when config is loaded
+  debug: process.env.NODE_ENV === 'development',
 } satisfies NextAuthConfig;
