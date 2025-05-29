@@ -5,6 +5,11 @@ import 'server-only';
  * This function is idempotent and only loads secrets if they're not already set
  */
 export async function loadEnvironmentVariables() {
+  console.log('Loading environment variables from AWS Parameter Store');
+  // console log all environment variables
+  for (const [key, value] of Object.entries(process.env)) {
+    console.log(`Environment variable: ${key}: ${value}`);
+  }
   // Skip if not on AWS Amplify or if variables are already loaded
   if (!process.env.AWS_APP_ID || process.env.API_BASE_URL) {
     return;
@@ -54,11 +59,17 @@ export async function loadEnvironmentVariables() {
     await Promise.all(secretPromises);
 
     // Set NEXTAUTH_URL dynamically for Amplify
-    if (!process.env.NEXTAUTH_URL && process.env.AWS_APP_ID && process.env.AWS_BRANCH) {
+    if (
+      !process.env.NEXTAUTH_URL &&
+      process.env.AWS_APP_ID &&
+      process.env.AWS_BRANCH
+    ) {
       process.env.NEXTAUTH_URL = `https://${process.env.AWS_BRANCH}.${process.env.AWS_APP_ID}.amplifyapp.com`;
       console.log(`Set NEXTAUTH_URL to: ${process.env.NEXTAUTH_URL}`);
     } else {
-      console.log(`NEXTAUTH_URL debug - current: ${process.env.NEXTAUTH_URL}, AWS_APP_ID: ${process.env.AWS_APP_ID}, AWS_BRANCH: ${process.env.AWS_BRANCH}`);
+      console.log(
+        `NEXTAUTH_URL debug - current: ${process.env.NEXTAUTH_URL}, AWS_APP_ID: ${process.env.AWS_APP_ID}, AWS_BRANCH: ${process.env.AWS_BRANCH}`,
+      );
     }
 
     console.log('Environment variables loaded from AWS Parameter Store');
