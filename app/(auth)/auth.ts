@@ -13,7 +13,7 @@ import { isTestEnvironment } from '@/lib/config/constants';
 
 // Debug: Log environment variables at runtime
 console.log('[auth.ts] Runtime environment check:');
-console.log('[auth.ts] NEXTAUTH_URL:', process.env.NEXTAUTH_URL);
+console.log('[auth.ts] AUTH_TRUST_HOST:', process.env.AUTH_TRUST_HOST);
 console.log(
   '[auth.ts] AUTH_SECRET:',
   process.env.AUTH_SECRET ? 'SET' : 'NOT SET',

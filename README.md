@@ -65,7 +65,7 @@ When deploying to AWS Amplify, add all environment variables in the Amplify cons
 - `GOOGLE_CLIENT_ID`: Your Google OAuth client ID
 - `GOOGLE_CLIENT_SECRET`: Your Google OAuth client secret
 
-The build process will automatically create a `.env.production` file with these variables, including a dynamically generated `NEXTAUTH_URL`.
+The build process will automatically create a `.env.production` file with these variables and set `AUTH_TRUST_HOST=true` for AWS Amplify's reverse proxy.
 
 > **⚠️ Security Note**: This approach stores secrets as environment variables that are accessible during build time and written to `.env.production`. While this simplifies deployment, it's not a security best practice. For production applications with sensitive data, consider using AWS Parameter Store or Secrets Manager for runtime secret injection instead. This tradeoff was made for deployment simplicity.
 
