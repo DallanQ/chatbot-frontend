@@ -47,15 +47,17 @@ type-check: ## Run TypeScript type checking
 
 check: ## Run all code quality checks and verify build
 	@echo -e "$(COLOR_BOLD)Running all checks...$(COLOR_RESET)"
-	@echo -e "$(COLOR_BOLD)1/4 Fixing linting issues...$(COLOR_RESET)"
+	@echo -e "$(COLOR_BOLD)1/3 Fixing linting issues...$(COLOR_RESET)"
 	@pnpm run lint:fix
-	@echo -e "$(COLOR_BOLD)2/4 Formatting code...$(COLOR_RESET)"
+	@echo -e "$(COLOR_BOLD)2/3 Formatting code...$(COLOR_RESET)"
 	@pnpm run format
-	@echo -e "$(COLOR_BOLD)3/4 Checking TypeScript types...$(COLOR_RESET)"
+	@echo -e "$(COLOR_BOLD)3/3 Checking TypeScript types...$(COLOR_RESET)"
 	@pnpm run type-check
-	@echo -e "$(COLOR_BOLD)4/4 Testing production build...$(COLOR_RESET)"
-	@pnpm run build
 	@echo -e "$(COLOR_GREEN)All checks completed successfully!$(COLOR_RESET)"
+
+build: ## Build the production version of the client
+	@echo -e "$(COLOR_BOLD)Building production version...$(COLOR_RESET)"
+	pnpm run build
 
 # Testing Commands
 setup-tests: ## Install Playwright browsers
