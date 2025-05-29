@@ -57,7 +57,8 @@ test-all: ## Run all tests
 	@echo -e "$(COLOR_BOLD)Running all tests...$(COLOR_RESET)"
 	@echo -e "$(COLOR_BOLD)Checking for existing servers on port 3000...$(COLOR_RESET)"
 	@node scripts/kill-port-3000.js
-	pnpm exec playwright test --reporter=dot
+	@echo -e "$(COLOR_YELLOW)Test output will be saved to test-logs.txt$(COLOR_RESET)"
+	PLAYWRIGHT=True NEXT_PUBLIC_PLAYWRIGHT=True pnpm exec playwright test --reporter=dot 2>&1 | tee test-logs.txt
 
 test-ui: ## Launch Playwright UI for interactive test debugging
 	@echo -e "$(COLOR_BOLD)Launching Playwright UI...$(COLOR_RESET)"

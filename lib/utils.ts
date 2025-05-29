@@ -54,24 +54,3 @@ export function getTrailingMessageId({
 export function sanitizeText(text: string) {
   return text.replace('<has_function_call>', '');
 }
-
-export function logToFile(message: string) {
-  if (typeof window !== 'undefined') {
-    // Client-side - log to console
-    console.log(`[${new Date().toISOString()}] ${message}`);
-    return;
-  }
-
-  const fs = require('node:fs');
-  const path = require('node:path');
-
-  try {
-    const timestamp = new Date().toISOString();
-    const logMessage = `[${timestamp}] ${message}\n`;
-    const logPath = path.join(process.cwd(), 'test-logs.txt');
-
-    fs.appendFileSync(logPath, logMessage);
-  } catch (error) {
-    console.error('Failed to write to log file:', error);
-  }
-}

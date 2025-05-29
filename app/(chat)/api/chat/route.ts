@@ -15,7 +15,7 @@ import {
   streamChatResponse,
 } from '@/lib/api/chats';
 import { getMessageCountByUserId } from '@/lib/api/users';
-import { generateUUID, getTrailingMessageId, logToFile } from '@/lib/utils';
+import { generateUUID, getTrailingMessageId } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
 import { postRequestBodySchema, type PostRequestBody } from './schema';
 import {
@@ -225,7 +225,6 @@ export async function GET(request: Request) {
   const streamContext = getStreamContext();
   const resumeRequestedAt = new Date();
 
-  logToFile(`streamContext ${streamContext}`);
 
   if (!streamContext) {
     return new Response(null, { status: 204 });
@@ -234,7 +233,6 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const chatId = searchParams.get('chatId');
 
-  logToFile(`chatId ${chatId}`);
 
   if (!chatId) {
     return new Response('id is required', { status: 400 });
@@ -268,7 +266,6 @@ export async function GET(request: Request) {
     return new Response('No streams found', { status: 404 });
   }
 
-  logToFile(`streamIds ${streamIds}`);
 
   const recentStreamId = streamIds.at(-1);
 
@@ -285,7 +282,6 @@ export async function GET(request: Request) {
     () => emptyDataStream,
   );
 
-  logToFile(`stream for chatId ${chatId} : ${stream}`);
 
   /*
    * For when the generation is streaming during SSR

@@ -1,4 +1,4 @@
-import { generateUUID, logToFile } from '@/lib/utils';
+import { generateUUID } from '@/lib/utils';
 import { expect, test } from '../fixtures';
 import { TEST_PROMPTS } from '../prompts/basic';
 import type { APIResponse } from '@playwright/test';
@@ -35,7 +35,6 @@ test.describe
 
       const text = await response.text();
       const lines = text.trim().split('\n');
-      logToFile(`lines: ${lines}`);
 
       // Compare all lines except the first one which contains a dynamic messageId
       const expectedLines = TEST_PROMPTS.TEST_PROMPT_1.OUTPUT_STREAM;
