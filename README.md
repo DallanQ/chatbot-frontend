@@ -56,21 +56,18 @@ The chat API will receive:
 
 ### AWS Amplify Deployment
 
-When deploying to AWS Amplify, you'll need to configure secrets and environment variables:
+When deploying to AWS Amplify, add all environment variables in the Amplify console under "Environment variables":
 
-#### Amplify Secrets (for runtime values)
-Add these as secrets in the Amplify console under "Environment variables > Secrets":
 - `AUTH_SECRET`: Generate a random secret for authentication (use https://generate-secret.vercel.app/32)
 - `API_BASE_URL`: Your custom backend API base URL (e.g., https://api.yourdomain.com)
 - `API_SECRET`: Authentication secret key for your custom API
 - `REDIS_URL`: Redis connection URL (if using Redis)
-
-#### Amplify Environment Variables (for build-time values)
-Add these as environment variables in the Amplify console:
-- `GOOGLE_CLIENT_ID`: Your Google OAuth client ID (public value, safe for build time)
+- `GOOGLE_CLIENT_ID`: Your Google OAuth client ID
 - `GOOGLE_CLIENT_SECRET`: Your Google OAuth client secret
 
-The application will automatically load secrets from AWS Parameter Store when deployed to Amplify.
+The build process will automatically create a `.env.production` file with these variables, including a dynamically generated `NEXTAUTH_URL`.
+
+> **⚠️ Security Note**: This approach stores secrets as environment variables that are accessible during build time and written to `.env.production`. While this simplifies deployment, it's not a security best practice. For production applications with sensitive data, consider using AWS Parameter Store or Secrets Manager for runtime secret injection instead. This tradeoff was made for deployment simplicity.
 
 ## Running locally
 
