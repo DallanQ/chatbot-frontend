@@ -17,9 +17,11 @@ help: ## Display available commands with descriptions
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "$(COLOR_CYAN)%-20s$(COLOR_RESET) %s\n", $$1, $$2}'
 
 # Environment Setup
-install: ## Install dependencies
+install: ## Install dependencies and set up Git hooks
 	@echo -e "$(COLOR_BOLD)Installing dependencies...$(COLOR_RESET)"
 	pnpm install
+	@echo -e "$(COLOR_BOLD)Setting up Git hooks...$(COLOR_RESET)"
+	pnpm exec husky init || true
 
 # Development Commands
 run: ## Run the client in development mode

@@ -14,7 +14,7 @@ export async function loadEnvironmentVariables() {
     // First check if we can resolve the module
     let amplifyBackend: any;
     try {
-      // @ts-expect-error - This module is only available when deployed to AWS Amplify
+      // @ts-ignore - This module is only available when deployed to AWS Amplify
       // eslint-disable-next-line import/no-unresolved
       amplifyBackend = await import('@aws-amplify/backend');
     } catch (error) {
