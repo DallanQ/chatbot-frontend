@@ -138,13 +138,15 @@ export async function POST(request: Request) {
     // Create data stream that uses our backend integration
     const stream = createDataStream({
       execute: async (dataStream) => {
-        // Create the stream from backend
-        const result = await streamChatResponse({
-          messages,
-          userId: session.user.id,
-          userType: session.user.type,
-          chatId: id,
-          onFinish: async ({ response }) => {
+        try {
+          console.log('[chat/route.ts] Starting stream execution');
+          // Create the stream from backend
+          const result = await streamChatResponse({
+            messages,
+            userId: session.user.id,
+            userType: session.user.type,
+            chatId: id,
+            onFinish: async ({ response }) => {
             if (session.user?.id) {
               try {
                 const assistantId = getTrailingMessageId({
@@ -194,12 +196,22 @@ export async function POST(request: Request) {
           },
         });
 
-        // Consume the stream and merge it into the dataStream
-        result.consumeStream();
-        result.mergeIntoDataStream(dataStream);
+          // Consume the stream and merge it into the dataStream
+          console.log('[chat/route.ts] Consuming stream');
+          result.consumeStream();
+          result.mergeIntoDataStream(dataStream);
+          console.log('[chat/route.ts] Stream execution completed successfully');
+        } catch (executeError) {
+          console.error('[chat/route.ts] Error in stream execution:', executeError);
+          console.error('[chat/route.ts] Execute error stack:', executeError instanceof Error ? executeError.stack : 'No stack trace');
+          throw executeError; // Re-throw to trigger onError
+        }
       },
       // onFinish handler now passed directly to streamFromBackend
-      onError: () => {
+      onError: (error: unknown) => {
+        console.error('[chat/route.ts] Stream error:', error);
+        console.error('[chat/route.ts] Error stack:', error instanceof Error ? error.stack : 'No stack trace');
+        console.error('[chat/route.ts] Error message:', error instanceof Error ? error.message : 'No error message');
         return 'Oops, an error occurred!';
       },
     });
