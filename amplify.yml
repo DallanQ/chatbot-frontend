@@ -9,7 +9,6 @@ frontend:
         - pnpm add @aws-amplify/backend
     build:
       commands:
-        - export NEXTAUTH_URL=https://$AWS_BRANCH.$AWS_APP_ID.amplifyapp.com
         - pnpm run build
   artifacts:
     baseDirectory: .next

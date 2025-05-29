@@ -53,6 +53,14 @@ export async function loadEnvironmentVariables() {
 
     await Promise.all(secretPromises);
 
+    // Set NEXTAUTH_URL dynamically for Amplify
+    if (!process.env.NEXTAUTH_URL && process.env.AWS_APP_ID && process.env.AWS_BRANCH) {
+      process.env.NEXTAUTH_URL = `https://${process.env.AWS_BRANCH}.${process.env.AWS_APP_ID}.amplifyapp.com`;
+      console.log(`Set NEXTAUTH_URL to: ${process.env.NEXTAUTH_URL}`);
+    } else {
+      console.log(`NEXTAUTH_URL debug - current: ${process.env.NEXTAUTH_URL}, AWS_APP_ID: ${process.env.AWS_APP_ID}, AWS_BRANCH: ${process.env.AWS_BRANCH}`);
+    }
+
     console.log('Environment variables loaded from AWS Parameter Store');
   } catch (error) {
     // If AWS dependencies aren't available or there's an error, fail silently
