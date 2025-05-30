@@ -19,14 +19,11 @@ frontend:
         - echo "REDIS_URL=$REDIS_URL" >> .env.production
         - echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" >> .env.production
         - echo "GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET" >> .env.production
-        # Debug: Show what was written to .env.production
-        - 'echo "Contents of .env.production:"'
-        - 'cat .env.production | grep -E "AUTH_TRUST_HOST|AUTH_SECRET" | sed "s/=.*/=***/"'
         - pnpm run build
   artifacts:
     baseDirectory: .next
     files:
-      - '**/*'
+      - "**/*"
   cache:
     paths:
       - node_modules/**/*
