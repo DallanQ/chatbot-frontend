@@ -2,39 +2,30 @@ import {
   appendClientMessage,
   appendResponseMessages,
   createDataStream,
-  smoothStream,
-  streamText,
 } from 'ai';
 import { auth, type UserType } from '@/app/(auth)/auth';
-import { type RequestHints, systemPrompt } from '@/lib/ai/prompts';
 import {
   createStreamId,
   deleteChatById,
   getChatById,
-  getMessageCountByUserId,
   getMessagesByChatId,
   getStreamIdsByChatId,
   saveChat,
   saveMessages,
-} from '@/lib/db/queries';
+  streamChatResponse,
+} from '@/lib/api/chats';
+import { getMessageCountByUserId } from '@/lib/api/users';
 import { generateUUID, getTrailingMessageId } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
-import { createDocument } from '@/lib/ai/tools/create-document';
-import { updateDocument } from '@/lib/ai/tools/update-document';
-import { requestSuggestions } from '@/lib/ai/tools/request-suggestions';
-import { getWeather } from '@/lib/ai/tools/get-weather';
-import { isProductionEnvironment } from '@/lib/constants';
-import { myProvider } from '@/lib/ai/providers';
-import { entitlementsByUserType } from '@/lib/ai/entitlements';
 import { postRequestBodySchema, type PostRequestBody } from './schema';
-import { geolocation } from '@vercel/functions';
 import {
   createResumableStreamContext,
   type ResumableStreamContext,
 } from 'resumable-stream';
 import { after } from 'next/server';
-import type { Chat } from '@/lib/db/schema';
+import type { Chat } from '@/lib/models/chat';
 import { differenceInSeconds } from 'date-fns';
+import { entitlementsByUserType } from '@/lib/config/entitlements';
 
 export const maxDuration = 60;
 
@@ -100,6 +91,7 @@ export async function POST(request: Request) {
 
     if (!chat) {
       const title = await generateTitleFromUserMessage({
+        // @ts-expect-error: AI SDK types - using parts format instead of content
         message,
       });
 
@@ -120,17 +112,12 @@ export async function POST(request: Request) {
     const messages = appendClientMessage({
       // @ts-expect-error: todo add type conversion from DBMessage[] to UIMessage[]
       messages: previousMessages,
+      // @ts-expect-error: AI SDK types - using parts format instead of content
       message,
     });
 
-    const { longitude, latitude, city, country } = geolocation(request);
-
-    const requestHints: RequestHints = {
-      longitude,
-      latitude,
-      city,
-      country,
-    };
+    // Geolocation data is available but not currently used
+    // const { longitude, latitude, city, country } = geolocation(request);
 
     await saveMessages({
       messages: [
@@ -146,84 +133,101 @@ export async function POST(request: Request) {
     });
 
     const streamId = generateUUID();
-    await createStreamId({ streamId, chatId: id });
+    await createStreamId({ id: streamId, chatId: id });
 
+    // Create data stream that uses our backend integration
     const stream = createDataStream({
-      execute: (dataStream) => {
-        const result = streamText({
-          model: myProvider.languageModel(selectedChatModel),
-          system: systemPrompt({ selectedChatModel, requestHints }),
-          messages,
-          maxSteps: 5,
-          experimental_activeTools:
-            selectedChatModel === 'chat-model-reasoning'
-              ? []
-              : [
-                  'getWeather',
-                  'createDocument',
-                  'updateDocument',
-                  'requestSuggestions',
-                ],
-          experimental_transform: smoothStream({ chunking: 'word' }),
-          experimental_generateMessageId: generateUUID,
-          tools: {
-            getWeather,
-            createDocument: createDocument({ session, dataStream }),
-            updateDocument: updateDocument({ session, dataStream }),
-            requestSuggestions: requestSuggestions({
-              session,
-              dataStream,
-            }),
-          },
-          onFinish: async ({ response }) => {
-            if (session.user?.id) {
-              try {
-                const assistantId = getTrailingMessageId({
-                  messages: response.messages.filter(
-                    (message) => message.role === 'assistant',
-                  ),
-                });
+      execute: async (dataStream) => {
+        try {
+          console.log('[chat/route.ts] Starting stream execution');
+          // Create the stream from backend
+          const result = await streamChatResponse({
+            messages,
+            userId: session.user.id,
+            userType: session.user.type,
+            chatId: id,
+            onFinish: async ({ response }) => {
+              if (session.user?.id) {
+                try {
+                  const assistantId = getTrailingMessageId({
+                    messages: response.messages.filter(
+                      (message: any) => message.role === 'assistant',
+                    ),
+                  });
 
-                if (!assistantId) {
-                  throw new Error('No assistant message found!');
+                  if (!assistantId) {
+                    throw new Error('No assistant message found!');
+                  }
+
+                  const [, assistantMessage] = appendResponseMessages({
+                    // @ts-expect-error: AI SDK types - using parts format instead of content
+                    messages: [message],
+                    responseMessages: response.messages,
+                  });
+
+                  await saveMessages({
+                    messages: [
+                      {
+                        id: assistantId,
+                        chatId: id,
+                        role: assistantMessage.role,
+                        parts: assistantMessage.parts
+                          ? assistantMessage.parts
+                              .filter((part: any) => part.type === 'text') // we only handle text parts
+                              .map((part: any) => ({
+                                type: 'text' as const,
+                                text: part.text,
+                              }))
+                          : [
+                              {
+                                type: 'text' as const,
+                                text: assistantMessage.content, // old format
+                              },
+                            ],
+                        attachments: [],
+                        createdAt: new Date(),
+                      },
+                    ],
+                  });
+                } catch (err) {
+                  console.error('Failed to save chat', err);
                 }
-
-                const [, assistantMessage] = appendResponseMessages({
-                  messages: [message],
-                  responseMessages: response.messages,
-                });
-
-                await saveMessages({
-                  messages: [
-                    {
-                      id: assistantId,
-                      chatId: id,
-                      role: assistantMessage.role,
-                      parts: assistantMessage.parts,
-                      attachments:
-                        assistantMessage.experimental_attachments ?? [],
-                      createdAt: new Date(),
-                    },
-                  ],
-                });
-              } catch (_) {
-                console.error('Failed to save chat');
               }
-            }
-          },
-          experimental_telemetry: {
-            isEnabled: isProductionEnvironment,
-            functionId: 'stream-text',
-          },
-        });
+            },
+          });
 
-        result.consumeStream();
-
-        result.mergeIntoDataStream(dataStream, {
-          sendReasoning: true,
-        });
+          // Consume the stream and merge it into the dataStream
+          console.log('[chat/route.ts] Consuming stream');
+          result.consumeStream();
+          result.mergeIntoDataStream(dataStream);
+          console.log(
+            '[chat/route.ts] Stream execution completed successfully',
+          );
+        } catch (executeError) {
+          console.error(
+            '[chat/route.ts] Error in stream execution:',
+            executeError,
+          );
+          console.error(
+            '[chat/route.ts] Execute error stack:',
+            executeError instanceof Error
+              ? executeError.stack
+              : 'No stack trace',
+          );
+          throw executeError; // Re-throw to trigger onError
+        }
       },
-      onError: () => {
+      // onFinish handler now passed directly to streamFromBackend
+      onError: (error: unknown) => {
+        console.error('[chat/route.ts] Stream error:', error);
+        console.error(
+          '[chat/route.ts] Error stack:',
+          error instanceof Error ? error.stack : 'No stack trace',
+        );
+        console.error(
+          '[chat/route.ts] Error message:',
+          error instanceof Error ? error.message : 'No error message',
+        );
         return 'Oops, an error occurred!';
       },
     });
@@ -237,7 +241,8 @@ export async function POST(request: Request) {
     } else {
       return new Response(stream);
     }
-  } catch (_) {
+  } catch (error) {
+    console.error('Unexpected error in chat API:', error);
     return new Response('An error occurred while processing your request!', {
       status: 500,
     });
@@ -265,7 +270,7 @@ export async function GET(request: Request) {
     return new Response('Unauthorized', { status: 401 });
   }
 
-  let chat: Chat;
+  let chat: Chat | undefined;
 
   try {
     chat = await getChatById({ id: chatId });
@@ -356,13 +361,17 @@ export async function DELETE(request: Request) {
   try {
     const chat = await getChatById({ id });
 
+    if (!chat) {
+      return new Response('Not Found', { status: 404 });
+    }
+
     if (chat.userId !== session.user.id) {
       return new Response('Forbidden', { status: 403 });
     }
 
-    const deletedChat = await deleteChatById({ id });
+    await deleteChatById({ id });
 
-    return Response.json(deletedChat, { status: 200 });
+    return new Response(null, { status: 204 });
   } catch (error) {
     console.error(error);
     return new Response('An error occurred while processing your request!', {

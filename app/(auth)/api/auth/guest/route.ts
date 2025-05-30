@@ -1,5 +1,5 @@
 import { signIn } from '@/app/(auth)/auth';
-import { isDevelopmentEnvironment } from '@/lib/constants';
+import { isDevelopmentEnvironment } from '@/lib/config/constants';
 import { getToken } from 'next-auth/jwt';
 import { NextResponse } from 'next/server';
 

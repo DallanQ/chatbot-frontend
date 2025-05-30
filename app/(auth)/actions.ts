@@ -1,10 +1,12 @@
 'use server';
 
 import { z } from 'zod';
-
-import { createUser, getUser } from '@/lib/db/queries';
-
+import { createUser, getUser } from '@/lib/api/users';
 import { signIn } from './auth';
+import { isTestEnvironment } from '@/lib/config/constants';
+
+// Email/password authentication is conditionally enabled based on environment
+// Available in test environments, disabled in production
 
 const authFormSchema = z.object({
   email: z.string().email(),
@@ -12,13 +14,35 @@ const authFormSchema = z.object({
 });
 
 export interface LoginActionState {
-  status: 'idle' | 'in_progress' | 'success' | 'failed' | 'invalid_data';
+  status:
+    | 'idle'
+    | 'in_progress'
+    | 'success'
+    | 'failed'
+    | 'invalid_data'
+    | 'disabled';
+}
+
+export interface RegisterActionState {
+  status:
+    | 'idle'
+    | 'in_progress'
+    | 'success'
+    | 'failed'
+    | 'user_exists'
+    | 'invalid_data'
+    | 'disabled';
 }
 
 export const login = async (
   _: LoginActionState,
   formData: FormData,
 ): Promise<LoginActionState> => {
+  // Only allow email/password authentication in test environments
+  if (!isTestEnvironment) {
+    return { status: 'disabled' };
+  }
+
   try {
     const validatedData = authFormSchema.parse({
       email: formData.get('email'),
@@ -41,20 +65,15 @@ export const login = async (
   }
 };
 
-export interface RegisterActionState {
-  status:
-    | 'idle'
-    | 'in_progress'
-    | 'success'
-    | 'failed'
-    | 'user_exists'
-    | 'invalid_data';
-}
-
 export const register = async (
   _: RegisterActionState,
   formData: FormData,
 ): Promise<RegisterActionState> => {
+  // Only allow email/password authentication in test environments
+  if (!isTestEnvironment) {
+    return { status: 'disabled' };
+  }
+
   try {
     const validatedData = authFormSchema.parse({
       email: formData.get('email'),

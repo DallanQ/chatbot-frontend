@@ -11,7 +11,7 @@
   <a href="https://chat-sdk.dev"><strong>Read Docs</strong></a> ·
   <a href="#features"><strong>Features</strong></a> ·
   <a href="#model-providers"><strong>Model Providers</strong></a> ·
-  <a href="#deploy-your-own"><strong>Deploy Your Own</strong></a> ·
+  <a href="#deployment"><strong>Deployment</strong></a> ·
   <a href="#running-locally"><strong>Running locally</strong></a>
 </p>
 <br/>
@@ -24,25 +24,50 @@
 - [AI SDK](https://sdk.vercel.ai/docs)
   - Unified API for generating text, structured objects, and tool calls with LLMs
   - Hooks for building dynamic chat and generative user interfaces
-  - Supports xAI (default), OpenAI, Fireworks, and other model providers
+  - Uses a custom backend for AI model integration
 - [shadcn/ui](https://ui.shadcn.com)
   - Styling with [Tailwind CSS](https://tailwindcss.com)
   - Component primitives from [Radix UI](https://radix-ui.com) for accessibility and flexibility
 - Data Persistence
-  - [Neon Serverless Postgres](https://vercel.com/marketplace/neon) for saving chat history and user data
-  - [Vercel Blob](https://vercel.com/storage/blob) for efficient file storage
+  - Managed by the custom backend API
+  - Chat history and user data are stored server-side
 - [Auth.js](https://authjs.dev)
   - Simple and secure authentication
 
 ## Model Providers
 
-This template ships with [xAI](https://x.ai) `grok-2-1212` as the default chat model. However, with the [AI SDK](https://sdk.vercel.ai/docs), you can switch LLM providers to [OpenAI](https://openai.com), [Anthropic](https://anthropic.com), [Cohere](https://cohere.com/), and [many more](https://sdk.vercel.ai/providers/ai-sdk-providers) with just a few lines of code.
+This application has been configured to use a custom backend for AI model integration. It requires the following environment variables:
 
-## Deploy Your Own
+- `API_BASE_URL`: The base URL for your custom API (e.g., https://api.yourdomain.com)
+- `API_SECRET`: Your authentication secret key for the custom API
 
-You can deploy your own version of the Next.js AI Chatbot to Vercel with one click:
+The backend API should support:
 
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fvercel%2Fai-chatbot&env=AUTH_SECRET&envDescription=Generate%20a%20random%20secret%20to%20use%20for%20authentication&envLink=https%3A%2F%2Fgenerate-secret.vercel.app%2F32&project-name=my-awesome-chatbot&repository-name=my-awesome-chatbot&demo-title=AI%20Chatbot&demo-description=An%20Open-Source%20AI%20Chatbot%20Template%20Built%20With%20Next.js%20and%20the%20AI%20SDK%20by%20Vercel&demo-url=https%3A%2F%2Fchat.vercel.ai&products=%5B%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22ai%22%2C%22productSlug%22%3A%22grok%22%2C%22integrationSlug%22%3A%22xai%22%7D%2C%7B%22type%22%3A%22integration%22%2C%22protocol%22%3A%22storage%22%2C%22productSlug%22%3A%22neon%22%2C%22integrationSlug%22%3A%22neon%22%7D%2C%7B%22type%22%3A%22blob%22%7D%5D)
+1. Chat completion streams using the optimized SSE format
+2. Title generation for new conversations
+3. Proper authentication via Bearer token
+
+The chat API will receive:
+- User messages and conversation history
+- System prompts and context information
+- User type and permissions data
+
+## Deployment
+
+### AWS Amplify Deployment
+
+When deploying to AWS Amplify, add all environment variables in the Amplify console under "Environment variables":
+
+- `AUTH_SECRET`: Generate a random secret for authentication (use https://generate-secret.vercel.app/32)
+- `API_BASE_URL`: Your custom backend API base URL (e.g., https://api.yourdomain.com)
+- `API_SECRET`: Authentication secret key for your custom API
+- `REDIS_URL`: Redis connection URL (if using Redis)
+- `GOOGLE_CLIENT_ID`: Your Google OAuth client ID
+- `GOOGLE_CLIENT_SECRET`: Your Google OAuth client secret
+
+The build process will automatically create a `.env.production` file with these variables and set `AUTH_TRUST_HOST=true` for AWS Amplify's reverse proxy.
+
+> **⚠️ Security Note**: This approach stores secrets as environment variables that are accessible during build time and written to `.env.production`. While this simplifies deployment, it's not a security best practice. For production applications with sensitive data, consider using AWS Parameter Store or Secrets Manager for runtime secret injection instead. This tradeoff was made for deployment simplicity.
 
 ## Running locally
 
@@ -50,13 +75,64 @@ You will need to use the environment variables [defined in `.env.example`](.env.
 
 > Note: You should not commit your `.env` file or it will expose secrets that will allow others to control access to your various AI and authentication provider accounts.
 
-1. Install Vercel CLI: `npm i -g vercel`
-2. Link local instance with Vercel and GitHub accounts (creates `.vercel` directory): `vercel link`
-3. Download your environment variables: `vercel env pull`
-
 ```bash
-pnpm install
-pnpm dev
+make install
+make dev
 ```
 
 Your app template should now be running on [localhost:3000](http://localhost:3000).
+
+### Code Quality
+
+```bash
+# Run all code quality checks (lint:fix, format, and type-check)
+make check
+```
+
+**Note:** This project uses [Husky](https://typicode.github.io/husky/) to automatically run `make check` as a pre-commit hook. All commits will be validated for code quality before being allowed.
+
+## Testing
+
+This application uses Playwright for end-to-end testing. **Important:** Since the frontend now integrates with a custom backend API, you must have the backend running before running tests.
+
+### Prerequisites
+
+1. **Backend Setup**: Ensure your custom backend is running with these commands:
+   ```bash
+   # In your backend directory:
+   make dev
+   ```
+
+2. **Frontend Test Setup** (one-time):
+   ```bash
+   make setup-tests
+   ```
+
+### Running Tests
+
+```bash
+# Run all tests
+make test-all
+
+# Run tests with UI
+make test-ui
+
+# Run specific tests
+PLAYWRIGHT=True NEXT_PUBLIC_PLAYWRIGHT=True pnpm exec playwright test tests/e2e/chat.test.ts
+
+# Run tests by name pattern
+PLAYWRIGHT=True NEXT_PUBLIC_PLAYWRIGHT=True pnpm exec playwright test -g "test name pattern"
+```
+
+### Troubleshooting Tests
+
+- If the "Ada can resume chat generation..." tests fail intermittently, you may need to increase the `SECOND_REQUEST_DELAY` constant in `/tests/routes/chat.test.ts`. This delay ensures the second request arrives while the first request is actively streaming.
+
+## Backend Integration
+
+This project now uses a custom backend API for all AI model interactions. Key aspects of the implementation:
+
+1. **Server-Side Integration**: All API calls happen server-side, keeping credentials secure
+2. **Streaming Protocol**: Uses the AI SDK Data Stream Protocol format
+3. **Centralized Module**: Backend API logic is centralized in `/lib/api/backend.ts`
+

@@ -1,0 +1,30 @@
+version: 1
+frontend:
+  phases:
+    preBuild:
+      commands:
+        - npm install -g pnpm
+        - pnpm install
+    build:
+      commands:
+        # Debug: Show available environment variables
+        - 'echo "AWS_BRANCH: $AWS_BRANCH"'
+        - 'echo "AWS_APP_ID: $AWS_APP_ID"'
+        # Create .env.production with all required environment variables
+        - echo "# Generated during build - DO NOT COMMIT" > .env.production
+        - echo "AUTH_TRUST_HOST=true" >> .env.production
+        - echo "AUTH_SECRET=$AUTH_SECRET" >> .env.production
+        - echo "API_BASE_URL=$API_BASE_URL" >> .env.production
+        - echo "API_SECRET=$API_SECRET" >> .env.production
+        - echo "REDIS_URL=$REDIS_URL" >> .env.production
+        - echo "GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID" >> .env.production
+        - echo "GOOGLE_CLIENT_SECRET=$GOOGLE_CLIENT_SECRET" >> .env.production
+        - pnpm run build
+  artifacts:
+    baseDirectory: .next
+    files:
+      - "**/*"
+  cache:
+    paths:
+      - node_modules/**/*
+      - .next/cache/**/*

@@ -1,10 +1,15 @@
 import { compare } from 'bcrypt-ts';
 import NextAuth, { type DefaultSession } from 'next-auth';
 import Credentials from 'next-auth/providers/credentials';
-import { createGuestUser, getUser } from '@/lib/db/queries';
+import GoogleProvider from 'next-auth/providers/google';
+import {
+  createGuestUser,
+  getUser,
+  getOrCreateUserFromOAuth,
+} from '@/lib/api/users';
 import { authConfig } from './auth.config';
-import { DUMMY_PASSWORD } from '@/lib/constants';
 import type { DefaultJWT } from 'next-auth/jwt';
+import { isTestEnvironment } from '@/lib/config/constants';
 
 export type UserType = 'guest' | 'regular';
 
@@ -30,38 +35,47 @@ declare module 'next-auth/jwt' {
   }
 }
 
-export const {
-  handlers: { GET, POST },
-  auth,
-  signIn,
-  signOut,
-} = NextAuth({
-  ...authConfig,
-  providers: [
-    Credentials({
-      credentials: {},
-      async authorize({ email, password }: any) {
-        const users = await getUser(email);
-
-        if (users.length === 0) {
-          await compare(password, DUMMY_PASSWORD);
-          return null;
-        }
-
-        const [user] = users;
-
-        if (!user.password) {
-          await compare(password, DUMMY_PASSWORD);
-          return null;
-        }
-
-        const passwordsMatch = await compare(password, user.password);
-
-        if (!passwordsMatch) return null;
-
-        return { ...user, type: 'regular' };
-      },
+// Build providers array conditionally based on environment
+const getProviders = () => {
+  const providers: any[] = [
+    GoogleProvider({
+      // Client ID can be public - it's visible in the browser anyway
+      clientId: process.env.GOOGLE_CLIENT_ID || 'not-configured',
+      // Client secret is only used server-side
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET || 'not-configured',
     }),
+  ];
+
+  // Add email/password authentication only in test environments
+  if (isTestEnvironment) {
+    providers.push(
+      Credentials({
+        credentials: {},
+        async authorize({ email, password }: any) {
+          const users = await getUser(email);
+
+          if (users.length === 0) {
+            return null;
+          }
+
+          const [user] = users;
+
+          if (!user.passwordHash) {
+            return null;
+          }
+
+          const passwordsMatch = await compare(password, user.passwordHash);
+
+          if (!passwordsMatch) return null;
+
+          return { ...user, type: 'regular', passwordHash: undefined };
+        },
+      }),
+    );
+  }
+
+  // Always add guest authentication
+  providers.push(
     Credentials({
       id: 'guest',
       credentials: {},
@@ -70,8 +84,49 @@ export const {
         return { ...guestUser, type: 'guest' };
       },
     }),
-  ],
+  );
+
+  return providers;
+};
+
+export const {
+  handlers: { GET, POST },
+  auth,
+  signIn,
+  signOut,
+} = NextAuth({
+  ...authConfig,
+  providers: getProviders(),
   callbacks: {
+    async signIn({ user, account, profile }) {
+      // Handle OAuth sign-ins (Google)
+      if (account?.provider === 'google') {
+        try {
+          // Get or create user in database from OAuth profile
+          const dbUser = await getOrCreateUserFromOAuth({
+            email: profile?.email,
+            provider: account.provider,
+            providerAccountId:
+              account.providerAccountId ??
+              (() => {
+                throw new Error('providerAccountId is required for OAuth');
+              })(),
+          });
+
+          // Update the user object with database ID and type
+          if (dbUser) {
+            user.id = dbUser.id;
+            user.type = 'regular';
+            return true;
+          }
+        } catch (error) {
+          console.error('OAuth user creation failed:', error);
+          return false;
+        }
+      }
+
+      return true; // Allow sign in for other providers (guest)
+    },
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id as string;
