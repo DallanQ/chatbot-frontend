@@ -29,8 +29,8 @@
   - Styling with [Tailwind CSS](https://tailwindcss.com)
   - Component primitives from [Radix UI](https://radix-ui.com) for accessibility and flexibility
 - Data Persistence
-  - [Neon Serverless Postgres](https://vercel.com/marketplace/neon) for saving chat history and user data
-  - [Vercel Blob](https://vercel.com/storage/blob) for efficient file storage
+  - Managed by the custom backend API
+  - Chat history and user data are stored server-side
 - [Auth.js](https://authjs.dev)
   - Simple and secure authentication
 
@@ -82,6 +82,15 @@ make dev
 
 Your app template should now be running on [localhost:3000](http://localhost:3000).
 
+### Code Quality
+
+```bash
+# Run all code quality checks (lint:fix, format, and type-check)
+make check
+```
+
+**Note:** This project uses [Husky](https://typicode.github.io/husky/) to automatically run `make check` as a pre-commit hook. All commits will be validated for code quality before being allowed.
+
 ## Testing
 
 This application uses Playwright for end-to-end testing. **Important:** Since the frontend now integrates with a custom backend API, you must have the backend running before running tests.
@@ -107,6 +116,12 @@ make test-all
 
 # Run tests with UI
 make test-ui
+
+# Run specific tests
+PLAYWRIGHT=True NEXT_PUBLIC_PLAYWRIGHT=True pnpm exec playwright test tests/e2e/chat.test.ts
+
+# Run tests by name pattern
+PLAYWRIGHT=True NEXT_PUBLIC_PLAYWRIGHT=True pnpm exec playwright test -g "test name pattern"
 ```
 
 ### Troubleshooting Tests

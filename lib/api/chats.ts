@@ -276,25 +276,34 @@ export async function streamChatResponse(params: {
   // Extract the onFinish callback and other params
   const { onFinish, chatId, ...otherParams } = params;
 
-  console.log('[streamChatResponse] Making backend call to:', `/api/chats/${chatId}/responses`);
-  console.log('[streamChatResponse] Request params:', JSON.stringify(otherParams, null, 2));
+  console.log(
+    '[streamChatResponse] Making backend call to:',
+    `/api/chats/${chatId}/responses`,
+  );
+  console.log(
+    '[streamChatResponse] Request params:',
+    JSON.stringify(otherParams, null, 2),
+  );
 
   let response: Response;
   try {
     // Real backend API call
-    response = await callBackend<Response>(
-      `/api/chats/${chatId}/responses`,
-      {
-        method: 'POST',
-        body: {
-          ...otherParams,
-        },
+    response = await callBackend<Response>(`/api/chats/${chatId}/responses`, {
+      method: 'POST',
+      body: {
+        ...otherParams,
       },
+    });
+    console.log(
+      '[streamChatResponse] Backend call successful, status:',
+      response.status,
     );
-    console.log('[streamChatResponse] Backend call successful, status:', response.status);
   } catch (backendError) {
     console.error('[streamChatResponse] Backend call failed:', backendError);
-    console.error('[streamChatResponse] Backend error stack:', backendError instanceof Error ? backendError.stack : 'No stack trace');
+    console.error(
+      '[streamChatResponse] Backend error stack:',
+      backendError instanceof Error ? backendError.stack : 'No stack trace',
+    );
     throw backendError;
   }
 
