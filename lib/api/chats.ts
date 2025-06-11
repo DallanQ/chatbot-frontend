@@ -276,15 +276,6 @@ export async function streamChatResponse(params: {
   // Extract the onFinish callback and other params
   const { onFinish, chatId, ...otherParams } = params;
 
-  console.log(
-    '[streamChatResponse] Making backend call to:',
-    `/api/chats/${chatId}/responses`,
-  );
-  console.log(
-    '[streamChatResponse] Request params:',
-    JSON.stringify(otherParams, null, 2),
-  );
-
   let response: Response;
   try {
     // Real backend API call
@@ -396,16 +387,11 @@ export async function streamChatResponse(params: {
         // Create two identical streams - one for merging, one for monitoring
         const [streamForMerge, streamForMonitor] = processedStream.tee();
 
-        // Prepare the final stream for merging
-        const formattedStream = streamForMerge.pipeThrough(
-          new TextEncoderStream(),
-        );
-
         // Use the formatted stream directly without additional wrapping
         // Let the SDK handle message IDs internally
 
         // Use type assertion to tell TypeScript this is the correct format
-        ds.merge(formattedStream as any);
+        ds.merge(streamForMerge as any);
 
         // Setup onFinish handler for when the stream completes
         if (onFinish) {

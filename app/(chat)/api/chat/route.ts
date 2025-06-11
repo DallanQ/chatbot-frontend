@@ -18,38 +18,12 @@ import { getMessageCountByUserId } from '@/lib/api/users';
 import { generateUUID, getTrailingMessageId } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
 import { postRequestBodySchema, type PostRequestBody } from './schema';
-import {
-  createResumableStreamContext,
-  type ResumableStreamContext,
-} from 'resumable-stream';
-import { after } from 'next/server';
 import type { Chat } from '@/lib/models/chat';
 import { differenceInSeconds } from 'date-fns';
 import { entitlementsByUserType } from '@/lib/config/entitlements';
+import { getStreamContext } from '@/lib/api/stream';
 
 export const maxDuration = 60;
-
-let globalStreamContext: ResumableStreamContext | null = null;
-
-function getStreamContext() {
-  if (!globalStreamContext) {
-    try {
-      globalStreamContext = createResumableStreamContext({
-        waitUntil: after,
-      });
-    } catch (error: any) {
-      if (error.message.includes('REDIS_URL')) {
-        console.log(
-          ' > Resumable streams are disabled due to missing REDIS_URL',
-        );
-      } else {
-        console.error(error);
-      }
-    }
-  }
-
-  return globalStreamContext;
-}
 
 export async function POST(request: Request) {
   let requestBody: PostRequestBody;
@@ -139,7 +113,6 @@ export async function POST(request: Request) {
     const stream = createDataStream({
       execute: async (dataStream) => {
         try {
-          console.log('[chat/route.ts] Starting stream execution');
           // Create the stream from backend
           const result = await streamChatResponse({
             messages,
@@ -197,12 +170,8 @@ export async function POST(request: Request) {
           });
 
           // Consume the stream and merge it into the dataStream
-          console.log('[chat/route.ts] Consuming stream');
           result.consumeStream();
           result.mergeIntoDataStream(dataStream);
-          console.log(
-            '[chat/route.ts] Stream execution completed successfully',
-          );
         } catch (executeError) {
           console.error(
             '[chat/route.ts] Error in stream execution:',

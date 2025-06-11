@@ -21,7 +21,7 @@ install: ## Install dependencies and set up Git hooks
 	@echo -e "$(COLOR_BOLD)Installing dependencies...$(COLOR_RESET)"
 	pnpm install
 	@echo -e "$(COLOR_BOLD)Setting up Git hooks...$(COLOR_RESET)"
-	pnpm exec husky init || true
+	@if [ ! -d ".husky" ]; then pnpm exec husky init; fi
 
 # Development Commands
 run: ## Run the client in development mode
