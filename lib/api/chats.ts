@@ -8,6 +8,7 @@ import {
   messageSchema,
   voteSchema,
   streamIdsResponseSchema,
+  type SaveMessage,
 } from '@/lib/models/chat';
 import type { VisibilityType } from '@/components/visibility-selector';
 
@@ -91,9 +92,11 @@ export async function updateChatVisiblityById({
 }
 
 export async function saveMessages({
+  userId,
   messages,
 }: {
-  messages: Array<DBMessage>;
+  userId: string;
+  messages: Array<SaveMessage>;
 }) {
   try {
     // Extract userId from the first message's chatId lookup
@@ -104,16 +107,10 @@ export async function saveMessages({
       throw new Error('No messages provided');
     }
 
-    // Get the chat to find userId
-    const chat = await getChatById({ id: chatId });
-    if (!chat) {
-      throw new Error('Chat not found');
-    }
-
     await callBackend(`/api/chats/${chatId}/messages`, {
       method: 'POST',
       body: {
-        userId: chat.userId,
+        userId: userId,
         messages,
       },
     });
@@ -276,15 +273,6 @@ export async function streamChatResponse(params: {
   // Extract the onFinish callback and other params
   const { onFinish, chatId, ...otherParams } = params;
 
-  console.log(
-    '[streamChatResponse] Making backend call to:',
-    `/api/chats/${chatId}/responses`,
-  );
-  console.log(
-    '[streamChatResponse] Request params:',
-    JSON.stringify(otherParams, null, 2),
-  );
-
   let response: Response;
   try {
     // Real backend API call
@@ -396,16 +384,11 @@ export async function streamChatResponse(params: {
         // Create two identical streams - one for merging, one for monitoring
         const [streamForMerge, streamForMonitor] = processedStream.tee();
 
-        // Prepare the final stream for merging
-        const formattedStream = streamForMerge.pipeThrough(
-          new TextEncoderStream(),
-        );
-
         // Use the formatted stream directly without additional wrapping
         // Let the SDK handle message IDs internally
 
         // Use type assertion to tell TypeScript this is the correct format
-        ds.merge(formattedStream as any);
+        ds.merge(streamForMerge as any);
 
         // Setup onFinish handler for when the stream completes
         if (onFinish) {

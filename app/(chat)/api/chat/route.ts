@@ -1,8 +1,4 @@
-import {
-  appendClientMessage,
-  appendResponseMessages,
-  createDataStream,
-} from 'ai';
+import { appendClientMessage, createDataStream } from 'ai';
 import { auth, type UserType } from '@/app/(auth)/auth';
 import {
   createStreamId,
@@ -15,41 +11,15 @@ import {
   streamChatResponse,
 } from '@/lib/api/chats';
 import { getMessageCountByUserId } from '@/lib/api/users';
-import { generateUUID, getTrailingMessageId } from '@/lib/utils';
+import { generateUUID } from '@/lib/utils';
 import { generateTitleFromUserMessage } from '../../actions';
 import { postRequestBodySchema, type PostRequestBody } from './schema';
-import {
-  createResumableStreamContext,
-  type ResumableStreamContext,
-} from 'resumable-stream';
-import { after } from 'next/server';
 import type { Chat } from '@/lib/models/chat';
 import { differenceInSeconds } from 'date-fns';
 import { entitlementsByUserType } from '@/lib/config/entitlements';
+import { getStreamContext } from '@/lib/api/stream';
 
 export const maxDuration = 60;
-
-let globalStreamContext: ResumableStreamContext | null = null;
-
-function getStreamContext() {
-  if (!globalStreamContext) {
-    try {
-      globalStreamContext = createResumableStreamContext({
-        waitUntil: after,
-      });
-    } catch (error: any) {
-      if (error.message.includes('REDIS_URL')) {
-        console.log(
-          ' > Resumable streams are disabled due to missing REDIS_URL',
-        );
-      } else {
-        console.error(error);
-      }
-    }
-  }
-
-  return globalStreamContext;
-}
 
 export async function POST(request: Request) {
   let requestBody: PostRequestBody;
@@ -62,8 +32,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { id, message, selectedChatModel, selectedVisibilityType } =
-      requestBody;
+    const { id, message, selectedVisibilityType } = requestBody;
 
     const session = await auth();
 
@@ -120,6 +89,7 @@ export async function POST(request: Request) {
     // const { longitude, latitude, city, country } = geolocation(request);
 
     await saveMessages({
+      userId: session.user.id,
       messages: [
         {
           chatId: id,
@@ -127,7 +97,6 @@ export async function POST(request: Request) {
           role: 'user',
           parts: message.parts,
           attachments: message.experimental_attachments ?? [],
-          createdAt: new Date(),
         },
       ],
     });
@@ -139,70 +108,18 @@ export async function POST(request: Request) {
     const stream = createDataStream({
       execute: async (dataStream) => {
         try {
-          console.log('[chat/route.ts] Starting stream execution');
           // Create the stream from backend
           const result = await streamChatResponse({
             messages,
             userId: session.user.id,
             userType: session.user.type,
             chatId: id,
-            onFinish: async ({ response }) => {
-              if (session.user?.id) {
-                try {
-                  const assistantId = getTrailingMessageId({
-                    messages: response.messages.filter(
-                      (message: any) => message.role === 'assistant',
-                    ),
-                  });
-
-                  if (!assistantId) {
-                    throw new Error('No assistant message found!');
-                  }
-
-                  const [, assistantMessage] = appendResponseMessages({
-                    // @ts-expect-error: AI SDK types - using parts format instead of content
-                    messages: [message],
-                    responseMessages: response.messages,
-                  });
-
-                  await saveMessages({
-                    messages: [
-                      {
-                        id: assistantId,
-                        chatId: id,
-                        role: assistantMessage.role,
-                        parts: assistantMessage.parts
-                          ? assistantMessage.parts
-                              .filter((part: any) => part.type === 'text') // we only handle text parts
-                              .map((part: any) => ({
-                                type: 'text' as const,
-                                text: part.text,
-                              }))
-                          : [
-                              {
-                                type: 'text' as const,
-                                text: assistantMessage.content, // old format
-                              },
-                            ],
-                        attachments: [],
-                        createdAt: new Date(),
-                      },
-                    ],
-                  });
-                } catch (err) {
-                  console.error('Failed to save chat', err);
-                }
-              }
-            },
+            onFinish: undefined,
           });
 
           // Consume the stream and merge it into the dataStream
-          console.log('[chat/route.ts] Consuming stream');
           result.consumeStream();
           result.mergeIntoDataStream(dataStream);
-          console.log(
-            '[chat/route.ts] Stream execution completed successfully',
-          );
         } catch (executeError) {
           console.error(
             '[chat/route.ts] Error in stream execution:',
