@@ -8,6 +8,7 @@ import {
   messageSchema,
   voteSchema,
   streamIdsResponseSchema,
+  type SaveMessage,
 } from '@/lib/models/chat';
 import type { VisibilityType } from '@/components/visibility-selector';
 
@@ -91,9 +92,11 @@ export async function updateChatVisiblityById({
 }
 
 export async function saveMessages({
+  userId,
   messages,
 }: {
-  messages: Array<DBMessage>;
+  userId: string;
+  messages: Array<SaveMessage>;
 }) {
   try {
     // Extract userId from the first message's chatId lookup
@@ -104,16 +107,10 @@ export async function saveMessages({
       throw new Error('No messages provided');
     }
 
-    // Get the chat to find userId
-    const chat = await getChatById({ id: chatId });
-    if (!chat) {
-      throw new Error('Chat not found');
-    }
-
     await callBackend(`/api/chats/${chatId}/messages`, {
       method: 'POST',
       body: {
-        userId: chat.userId,
+        userId: userId,
         messages,
       },
     });

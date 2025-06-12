@@ -60,11 +60,22 @@ export const messageSchema = z.object({
 // Export the DBMessage type to match existing usage
 export type DBMessage = z.infer<typeof messageSchema>;
 
-// Schema for saving messages request
-export const saveMessagesRequestSchema = z.object({
-  userId: z.string().uuid(),
-  messages: z.array(messageSchema),
+// Schema for saving messages - no createdAt
+export const saveMessageSchema = z.object({
+  id: z.string().uuid(),
+  chatId: z.string().uuid(),
+  role: messageRoleSchema,
+  parts: z.array(
+    z.object({
+      type: z.literal('text'),
+      text: z.string(),
+    }),
+  ),
+  attachments: z.array(z.any()).default([]),
 });
+
+// Export the SaveMessage type
+export type SaveMessage = z.infer<typeof saveMessageSchema>;
 
 // Vote schema
 export const voteSchema = z.object({
